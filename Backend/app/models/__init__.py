@@ -1,3 +1,4 @@
+from app.models import auth_stub  # noqa: F401 - registers auth.users stub for FK resolution
 from app.models.base import Base
 from app.models.client import (
     Client,

@@ -64,7 +64,7 @@ OpenAPI docs at `http://localhost:8000/docs`.
 
 - Roles are `admin` / `engineer` / `manager`, stored on `profiles.role`.
 - The frontend authenticates directly against Supabase Auth (supabase-js) and sends the resulting access token as `Authorization: Bearer <token>` on every API call.
-- The backend verifies that JWT itself (HS256, `SUPABASE_JWT_SECRET`) — it never calls back to Supabase to validate a session.
+- The backend verifies that JWT itself — it never calls back to Supabase to validate a session. Modern Supabase projects sign access tokens with an asymmetric key (ES256), verified here via the project's JWKS endpoint (`PyJWKClient`, cached); projects still on the legacy shared secret fall back to `SUPABASE_JWT_SECRET` (HS256) automatically based on the token's `alg` header.
 - `POST /auth/signup` creates the Supabase Auth user (via the service-role admin API) **and** the `profiles` row in one call, always as `role=engineer`. There is intentionally no API path to create an admin or manager — use `scripts/create_admin.py` once, then `PATCH /admin/users/{id}/role` (admin-only) to promote anyone else.
 
 ## Endpoints built so far
