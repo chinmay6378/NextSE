@@ -4,7 +4,7 @@ from typing import Literal
 from fastapi import APIRouter, HTTPException, status
 from sqlalchemy import select
 
-from app.crud import get_latest_version
+from app.crud import get_latest_version, get_visible_client
 from app.deps import AdminProfile, CurrentProfile, DbSession
 from app.models import Client, ClientFile, ClientProfileGenerated, SalesPitch, StudyMaterial
 from app.schemas.client import (
@@ -48,16 +48,9 @@ async def list_clients(
     return list(result.scalars().all())
 
 
-async def _get_visible_client(db: DbSession, profile: CurrentProfile, client_id: uuid.UUID) -> Client:
-    client = await db.get(Client, client_id)
-    if client is None or (client.status != "published" and profile.role != "admin"):
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Client not found")
-    return client
-
-
 @router.get("/{client_id}", response_model=ClientDetailOut)
 async def get_client(client_id: uuid.UUID, db: DbSession, profile: CurrentProfile) -> ClientDetailOut:
-    client = await _get_visible_client(db, profile, client_id)
+    client = await get_visible_client(db, profile, client_id)
 
     files_result = await db.execute(
         select(ClientFile).where(ClientFile.client_id == client_id).order_by(ClientFile.uploaded_at)

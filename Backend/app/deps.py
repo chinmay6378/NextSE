@@ -53,3 +53,4 @@ def require_role(*roles: str):
 # (rather than `= Depends(require_role(...))` alongside an Annotated type)
 # avoids FastAPI's "Depends in Annotated and default value together" error.
 AdminProfile = Annotated[Profile, Depends(require_role("admin"))]
+EngineerProfile = Annotated[Profile, Depends(require_role("engineer"))]

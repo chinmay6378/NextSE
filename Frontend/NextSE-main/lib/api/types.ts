@@ -68,3 +68,26 @@ export interface GenerationKickoff {
   study_material_id: string | null
   sales_pitch_id: string | null
 }
+
+export interface StudyModule {
+  title: string
+  content: string
+}
+
+export interface Flashcard {
+  front: string
+  back: string
+}
+
+export interface StudyMaterialContent {
+  modules: StudyModule[]
+  flashcards: Flashcard[]
+  cheat_sheet: string
+}
+
+export interface EngineerProgress {
+  client_id: string
+  studied_percent: number
+  studied_sections: Record<string, boolean>
+  updated_at: string
+}

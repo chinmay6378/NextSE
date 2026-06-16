@@ -88,6 +88,7 @@ class StudyMaterial(Base):
         UUID(as_uuid=True), ForeignKey("clients.id", ondelete="CASCADE"), nullable=False, index=True
     )
     version: Mapped[int] = mapped_column(Integer, nullable=False)
+    content_json: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
     content_markdown: Mapped[str | None] = mapped_column(Text, nullable=True)
     status: Mapped[str] = mapped_column(GeneratedContentStatus, nullable=False, server_default="generating")
     error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
