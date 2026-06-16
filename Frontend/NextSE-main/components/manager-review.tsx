@@ -62,6 +62,7 @@ const submissions: Submission[] = [
   },
 ]
 
+// Still mock — Phase 5 wires this to GET /results?status=pending_review + POST /results/{id}/review.
 export function ManagerReview() {
   const [selectedSubmission, setSelectedSubmission] = useState<Submission | null>(null)
   const [selectedStatuses, setSelectedStatuses] = useState<Record<string, 'pending' | 'approved' | 'rejected'>>({})

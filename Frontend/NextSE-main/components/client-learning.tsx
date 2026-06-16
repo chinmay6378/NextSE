@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { motion } from 'framer-motion'
 import { BookOpen, FlipHorizontal, Eye, FileText, ChevronRight, CheckCircle2 } from 'lucide-react'
 import { materialStore, progressStore } from '@/lib/data-store'
-import { useAuth } from '@/lib/auth-context'
+import { useAuth } from '@/lib/auth'
 import type { LearningMaterial } from '@/lib/mock-llm'
 
 interface ClientLearningProps {
@@ -12,12 +12,14 @@ interface ClientLearningProps {
   clientName: string
 }
 
+// Materials/progress are still localStorage-backed mocks — Phase 2 replaces
+// this with GET /clients/{id}/study-material + PATCH /engineer-progress/{id}.
 export function ClientLearning({ clientId, clientName }: ClientLearningProps) {
-  const { user } = useAuth()
+  const { profile } = useAuth()
   const [materials] = useState<LearningMaterial[]>(materialStore.getByClientId(clientId))
   const [selectedMaterial, setSelectedMaterial] = useState<LearningMaterial | null>(null)
   const [flipped, setFlipped] = useState(false)
-  const [completed, setCompleted] = useState(() => progressStore.getProgress(user?.id || '', clientId))
+  const [completed, setCompleted] = useState(() => progressStore.getProgress(profile?.id || '', clientId))
 
   const modules = materials.filter(m => m.type === 'module')
   const flashcards = materials.filter(m => m.type === 'flashcard')
@@ -25,8 +27,8 @@ export function ClientLearning({ clientId, clientName }: ClientLearningProps) {
   const cheatSheets = materials.filter(m => m.type === 'cheat-sheet')
 
   const handleMaterialComplete = (materialId: string) => {
-    if (user) {
-      progressStore.updateProgress(user.id, clientId, materialId, true)
+    if (profile) {
+      progressStore.updateProgress(profile.id, clientId, materialId, true)
       setCompleted(prev => ({ ...prev, [materialId]: true }))
     }
   }

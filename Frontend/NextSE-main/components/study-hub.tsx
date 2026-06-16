@@ -1,17 +1,21 @@
 'use client'
 
+import { useQuery } from '@tanstack/react-query'
 import { useState } from 'react'
 import { motion } from 'framer-motion'
 import { BookOpen, ArrowRight, Users } from 'lucide-react'
-import { clientStore } from '@/lib/data-store'
+import { listClients } from '@/lib/api/clients'
 import { ClientLearning } from './client-learning'
 
 export function StudyHub() {
   const [selectedClientId, setSelectedClientId] = useState<string | null>(null)
-  const [clients] = useState(clientStore.getAll())
+  const { data: clients, isLoading } = useQuery({
+    queryKey: ['clients', 'published'],
+    queryFn: () => listClients({ status: 'published' }),
+  })
 
   if (selectedClientId) {
-    const client = clients.find(c => c.id === selectedClientId)
+    const client = clients?.find((c) => c.id === selectedClientId)
     if (client) {
       return (
         <div>
@@ -35,16 +39,22 @@ export function StudyHub() {
         <p className="text-muted-foreground mt-1">Select a client to study their profile and materials</p>
       </div>
 
+      {isLoading && (
+        <div className="flex justify-center py-12">
+          <div className="w-8 h-8 border-3 border-primary/30 border-t-primary rounded-full animate-spin" />
+        </div>
+      )}
+
       {/* Clients List */}
-      {clients.length === 0 ? (
+      {!isLoading && (clients?.length ?? 0) === 0 ? (
         <div className="text-center py-12 bg-card border border-border rounded-xl">
           <Users className="mx-auto mb-3 text-muted-foreground" size={40} />
           <p className="text-foreground font-semibold mb-2">No Clients Available</p>
-          <p className="text-muted-foreground">Your manager needs to create client profiles before you can start studying.</p>
+          <p className="text-muted-foreground">An admin needs to publish a client profile before you can start studying.</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {clients.map((client, idx) => (
+          {clients?.map((client, idx) => (
             <motion.button
               key={client.id}
               initial={{ opacity: 0, y: 20 }}
@@ -54,7 +64,6 @@ export function StudyHub() {
               className="text-left bg-card border border-border rounded-xl p-6 hover:border-primary transition-colors group"
             >
               <div className="space-y-4">
-                {/* Header */}
                 <div className="flex items-start justify-between">
                   <div>
                     <h3 className="text-xl font-bold text-foreground group-hover:text-primary transition-colors">{client.name}</h3>
@@ -63,39 +72,6 @@ export function StudyHub() {
                   <ArrowRight className="text-muted-foreground group-hover:text-primary transition-colors" size={24} />
                 </div>
 
-                {/* Description */}
-                <p className="text-foreground text-sm line-clamp-2">{client.description}</p>
-
-                {/* Stats */}
-                <div className="grid grid-cols-3 gap-3 text-sm">
-                  <div className="bg-muted/50 rounded p-2 text-center">
-                    <p className="text-foreground font-semibold">{client.products.length}</p>
-                    <p className="text-muted-foreground text-xs">Products</p>
-                  </div>
-                  <div className="bg-muted/50 rounded p-2 text-center">
-                    <p className="text-foreground font-semibold">{client.services.length}</p>
-                    <p className="text-muted-foreground text-xs">Services</p>
-                  </div>
-                  <div className="bg-muted/50 rounded p-2 text-center">
-                    <p className="text-foreground font-semibold">{client.competitors.length}</p>
-                    <p className="text-muted-foreground text-xs">Competitors</p>
-                  </div>
-                </div>
-
-                {/* Key Points */}
-                <div>
-                  <p className="text-muted-foreground text-xs mb-2">Key Points</p>
-                  <ul className="space-y-1">
-                    {client.keyPoints.slice(0, 2).map((point, i) => (
-                      <li key={i} className="text-xs text-foreground flex items-start gap-2">
-                        <span className="text-primary mt-1">•</span>
-                        {point}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-
-                {/* CTA */}
                 <div className="flex items-center gap-2 text-primary font-semibold text-sm">
                   <BookOpen size={16} />
                   Start Learning
@@ -108,5 +84,3 @@ export function StudyHub() {
     </div>
   )
 }
-
-

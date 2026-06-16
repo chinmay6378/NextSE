@@ -4,6 +4,10 @@ import { motion } from 'framer-motion'
 import { LineChart, Line, ResponsiveContainer, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts'
 import { CheckCircle, Clock, Zap, Users } from 'lucide-react'
 
+import { useAuth } from '@/lib/auth'
+
+// Illustrative placeholders — the spec has no dashboard-stats endpoint yet,
+// so these stay static until that's added in a later phase.
 const chartData = [
   { date: 'Mon', score: 65 },
   { date: 'Tue', score: 72 },
@@ -22,6 +26,9 @@ const activities = [
 ]
 
 export function Dashboard() {
+  const { profile } = useAuth()
+  const firstName = profile?.full_name?.split(' ')[0]
+
   const containerVariants = {
     hidden: { opacity: 0 },
     visible: {
@@ -38,7 +45,7 @@ export function Dashboard() {
     visible: {
       opacity: 1,
       y: 0,
-      transition: { duration: 0.5, ease: 'easeOut' },
+      transition: { duration: 0.5, ease: 'easeOut' as const },
     },
   }
 
@@ -50,7 +57,7 @@ export function Dashboard() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
       >
-        <h1 className="text-3xl font-bold">Welcome back!</h1>
+        <h1 className="text-3xl font-bold">Welcome back{firstName ? `, ${firstName}` : ''}!</h1>
         <p className="text-muted-foreground mt-2">Track your sales mastery journey</p>
       </motion.div>
 

@@ -46,6 +46,7 @@ const voicePrompts = [
   'Guide a prospect through a discovery conversation by asking 3-4 discovery questions to understand their challenges.',
 ]
 
+// Still mock — Phase 3 wires this to real test_requests + MCQ, Phase 4 to the realtime voice stage.
 export function TestFlow() {
   const [stage, setStage] = useState<Stage>('select')
   const [selectedTest, setSelectedTest] = useState<string | null>(null)

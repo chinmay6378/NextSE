@@ -32,6 +32,7 @@ const improvements = [
 
 const COLORS = ['#8366ff', '#a78bfa', '#c4b5fd', '#ddd6fe']
 
+// Still mock — Phase 5 wires this to GET /results + GET /results/{id}.
 export function ResultsAnalysis() {
   const containerVariants = {
     hidden: { opacity: 0 },
