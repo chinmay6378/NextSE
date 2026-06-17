@@ -91,3 +91,45 @@ export interface EngineerProgress {
   studied_sections: Record<string, boolean>
   updated_at: string
 }
+
+export type TestRequestStatus = 'pending' | 'approved' | 'in_progress' | 'completed'
+
+export interface TestRequest {
+  id: string
+  client_id: string
+  engineer_id: string
+  requested_by: string
+  status: TestRequestStatus
+  requested_at: string
+  responded_at: string | null
+  client_name: string | null
+  engineer_name: string | null
+}
+
+export interface MCQQuestion {
+  id: string
+  question_text: string
+  options: string[]
+  difficulty: string | null
+}
+
+export interface MCQStartData {
+  mcq_set_id: string
+  questions: MCQQuestion[]
+}
+
+export interface MCQQuestionResult {
+  question_id: string
+  selected_option_index: number
+  correct_option_index: number
+  is_correct: boolean
+  explanation: string | null
+}
+
+export interface MCQResult {
+  score_percent: number
+  passed: boolean
+  total: number
+  correct: number
+  question_results: MCQQuestionResult[]
+}

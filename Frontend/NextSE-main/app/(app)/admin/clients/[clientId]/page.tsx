@@ -12,6 +12,8 @@ import {
   Trash2,
   Upload,
   XCircle,
+  ClipboardList,
+  UserCheck,
 } from 'lucide-react'
 import { use, useRef, useState } from 'react'
 import ReactMarkdown from 'react-markdown'
@@ -26,13 +28,22 @@ import {
   regenerate,
   uploadClientFiles,
 } from '@/lib/api/clients'
+import {
+  approveTestRequest,
+  createTestRequest,
+  listAdminTestRequests,
+  listEngineers,
+} from '@/lib/api/tests'
 import type { GeneratedContent, GenerationSection } from '@/lib/api/types'
 import { cn } from '@/lib/utils'
 
-const SECTION_LABELS: Record<GenerationSection, string> = {
+type Tab = GenerationSection | 'test_requests'
+
+const SECTION_LABELS: Record<Tab, string> = {
   profile: 'Client Profile',
   study_material: 'Study Material',
   sales_pitch: 'Sales Pitch',
+  test_requests: 'Test Requests',
 }
 
 function StatusBadge({ status }: { status: GeneratedContent['status'] | undefined }) {
@@ -50,15 +61,30 @@ function StatusBadge({ status }: { status: GeneratedContent['status'] | undefine
   )
 }
 
+const TR_STATUS_STYLES: Record<string, string> = {
+  pending: 'bg-amber-500/15 text-amber-400',
+  approved: 'bg-primary/15 text-primary',
+  in_progress: 'bg-sky-500/15 text-sky-400',
+  completed: 'bg-emerald-500/15 text-emerald-400',
+}
+
+const TR_STATUS_LABELS: Record<string, string> = {
+  pending: 'Pending',
+  approved: 'Approved',
+  in_progress: 'In Progress',
+  completed: 'Completed',
+}
+
 export default function ClientDetailPage({ params }: { params: Promise<{ clientId: string }> }) {
   const { clientId } = use(params)
   const queryClient = useQueryClient()
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  const [tab, setTab] = useState<GenerationSection>('profile')
+  const [tab, setTab] = useState<Tab>('profile')
   const [isEditing, setIsEditing] = useState(false)
   const [draftMarkdown, setDraftMarkdown] = useState('')
   const [regenPrompt, setRegenPrompt] = useState('')
+  const [selectedEngineerId, setSelectedEngineerId] = useState('')
 
   const { data, isLoading, isError } = useQuery({
     queryKey: ['client', clientId],
@@ -72,7 +98,21 @@ export default function ClientDetailPage({ params }: { params: Promise<{ clientI
     },
   })
 
+  const { data: testRequests, isLoading: trLoading } = useQuery({
+    queryKey: ['admin-test-requests', clientId],
+    queryFn: () => listAdminTestRequests({ client_id: clientId }),
+    enabled: tab === 'test_requests',
+  })
+
+  const { data: engineers } = useQuery({
+    queryKey: ['engineers'],
+    queryFn: listEngineers,
+    enabled: tab === 'test_requests',
+  })
+
   const invalidate = () => queryClient.invalidateQueries({ queryKey: ['client', clientId] })
+  const invalidateTR = () =>
+    queryClient.invalidateQueries({ queryKey: ['admin-test-requests', clientId] })
 
   const uploadMutation = useMutation({
     mutationFn: (files: File[]) => uploadClientFiles(clientId, files),
@@ -118,6 +158,27 @@ export default function ClientDetailPage({ params }: { params: Promise<{ clientI
     onError: (error) => toast.error(error instanceof ApiError ? error.message : 'Could not publish'),
   })
 
+  const createTRMutation = useMutation({
+    mutationFn: (engineerId: string) => createTestRequest(clientId, engineerId),
+    onSuccess: () => {
+      invalidateTR()
+      setSelectedEngineerId('')
+      toast.success('Test request created')
+    },
+    onError: (error) =>
+      toast.error(error instanceof ApiError ? error.message : 'Could not create test request'),
+  })
+
+  const approveTRMutation = useMutation({
+    mutationFn: (requestId: string) => approveTestRequest(requestId),
+    onSuccess: () => {
+      invalidateTR()
+      toast.success('Test request approved')
+    },
+    onError: (error) =>
+      toast.error(error instanceof ApiError ? error.message : 'Could not approve'),
+  })
+
   if (isLoading) {
     return (
       <div className="flex justify-center py-24">
@@ -139,7 +200,7 @@ export default function ClientDetailPage({ params }: { params: Promise<{ clientI
     study_material: data.study_material,
     sales_pitch: data.sales_pitch,
   }
-  const current = sectionContent[tab]
+  const currentSection = tab !== 'test_requests' ? sectionContent[tab as GenerationSection] : null
   const allReady = (['profile', 'study_material', 'sales_pitch'] as const).every((key) =>
     ['ready', 'edited'].includes(sectionContent[key]?.status ?? '')
   )
@@ -151,7 +212,7 @@ export default function ClientDetailPage({ params }: { params: Promise<{ clientI
   }
 
   const startEditing = () => {
-    setDraftMarkdown(current?.content_markdown ?? '')
+    setDraftMarkdown(currentSection?.content_markdown ?? '')
     setIsEditing(true)
   }
 
@@ -225,30 +286,32 @@ export default function ClientDetailPage({ params }: { params: Promise<{ clientI
         )}
       </div>
 
-      {/* Regenerate prompt override */}
-      <div className="bg-card border border-border rounded-lg p-6 space-y-3">
-        <h2 className="font-semibold">Regenerate</h2>
-        <textarea
-          value={regenPrompt}
-          onChange={(e) => setRegenPrompt(e.target.value)}
-          placeholder="New custom prompt (optional — leave blank to reuse the last one)"
-          rows={2}
-          className="w-full px-4 py-2 rounded-lg bg-input border border-border text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 resize-none text-sm"
-        />
-        <button
-          onClick={() => regenerateMutation.mutate(undefined)}
-          disabled={regenerateMutation.isPending}
-          className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-border text-sm hover:bg-muted transition-colors disabled:opacity-50"
-        >
-          <RefreshCw size={16} />
-          Regenerate All
-        </button>
-      </div>
+      {/* Regenerate prompt — only show when on a generation tab */}
+      {tab !== 'test_requests' && (
+        <div className="bg-card border border-border rounded-lg p-6 space-y-3">
+          <h2 className="font-semibold">Regenerate</h2>
+          <textarea
+            value={regenPrompt}
+            onChange={(e) => setRegenPrompt(e.target.value)}
+            placeholder="New custom prompt (optional — leave blank to reuse the last one)"
+            rows={2}
+            className="w-full px-4 py-2 rounded-lg bg-input border border-border text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 resize-none text-sm"
+          />
+          <button
+            onClick={() => regenerateMutation.mutate(undefined)}
+            disabled={regenerateMutation.isPending}
+            className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-border text-sm hover:bg-muted transition-colors disabled:opacity-50"
+          >
+            <RefreshCw size={16} />
+            Regenerate All
+          </button>
+        </div>
+      )}
 
       {/* Tabs */}
       <div className="bg-card border border-border rounded-lg overflow-hidden">
-        <div className="flex border-b border-border">
-          {(['profile', 'study_material', 'sales_pitch'] as const).map((key) => (
+        <div className="flex border-b border-border overflow-x-auto">
+          {(['profile', 'study_material', 'sales_pitch', 'test_requests'] as const).map((key) => (
             <button
               key={key}
               onClick={() => {
@@ -256,7 +319,7 @@ export default function ClientDetailPage({ params }: { params: Promise<{ clientI
                 setIsEditing(false)
               }}
               className={cn(
-                'flex-1 px-4 py-3 text-sm font-medium transition-colors',
+                'flex-shrink-0 px-4 py-3 text-sm font-medium transition-colors whitespace-nowrap',
                 tab === key ? 'bg-muted text-foreground' : 'text-muted-foreground hover:text-foreground'
               )}
             >
@@ -265,85 +328,176 @@ export default function ClientDetailPage({ params }: { params: Promise<{ clientI
           ))}
         </div>
 
-        <div className="p-6 space-y-4">
-          <div className="flex items-center justify-between">
-            <StatusBadge status={current?.status} />
-            <div className="flex items-center gap-2">
-              {tab === 'profile' && current?.content_markdown && !isEditing && (
+        {/* Generation section content */}
+        {tab !== 'test_requests' && (
+          <div className="p-6 space-y-4">
+            <div className="flex items-center justify-between">
+              <StatusBadge status={currentSection?.status} />
+              <div className="flex items-center gap-2">
+                {tab === 'profile' && currentSection?.content_markdown && !isEditing && (
+                  <button
+                    onClick={startEditing}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border text-sm hover:bg-muted transition-colors"
+                  >
+                    <Pencil size={14} />
+                    Edit
+                  </button>
+                )}
                 <button
-                  onClick={startEditing}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border text-sm hover:bg-muted transition-colors"
+                  onClick={() => regenerateMutation.mutate(tab as GenerationSection)}
+                  disabled={regenerateMutation.isPending}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border text-sm hover:bg-muted transition-colors disabled:opacity-50"
                 >
-                  <Pencil size={14} />
-                  Edit
-                </button>
-              )}
-              <button
-                onClick={() => regenerateMutation.mutate(tab)}
-                disabled={regenerateMutation.isPending}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border text-sm hover:bg-muted transition-colors disabled:opacity-50"
-              >
-                <RefreshCw size={14} />
-                Regenerate
-              </button>
-            </div>
-          </div>
-
-          {current?.status === 'failed' && current.error_message && (
-            <div className="bg-destructive/10 border border-destructive/30 rounded-lg p-4 text-destructive text-sm">
-              {current.error_message}
-            </div>
-          )}
-
-          {current?.status === 'generating' && (
-            <div className="flex items-center gap-2 text-muted-foreground text-sm py-8 justify-center">
-              <Loader2 size={18} className="animate-spin" />
-              Generating…
-            </div>
-          )}
-
-          {isEditing ? (
-            <div className="space-y-3">
-              <textarea
-                value={draftMarkdown}
-                onChange={(e) => setDraftMarkdown(e.target.value)}
-                rows={16}
-                className="w-full px-4 py-3 rounded-lg bg-input border border-border text-foreground font-mono text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 resize-none"
-              />
-              <div className="flex gap-2">
-                <button
-                  onClick={() => patchMutation.mutate(draftMarkdown)}
-                  disabled={patchMutation.isPending}
-                  className="px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium disabled:opacity-50"
-                >
-                  {patchMutation.isPending ? 'Saving…' : 'Save'}
-                </button>
-                <button
-                  onClick={() => setIsEditing(false)}
-                  className="px-4 py-2 rounded-lg border border-border text-sm hover:bg-muted transition-colors"
-                >
-                  Cancel
+                  <RefreshCw size={14} />
+                  Regenerate
                 </button>
               </div>
             </div>
-          ) : (
-            current?.content_markdown && (
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                className="prose prose-invert prose-sm max-w-none"
-              >
-                <ReactMarkdown>{current.content_markdown}</ReactMarkdown>
-              </motion.div>
-            )
-          )}
 
-          {!current && (
-            <p className="text-sm text-muted-foreground py-8 text-center">
-              Not generated yet. Use Regenerate above once files/prompt are ready.
-            </p>
-          )}
-        </div>
+            {currentSection?.status === 'failed' && currentSection.error_message && (
+              <div className="bg-destructive/10 border border-destructive/30 rounded-lg p-4 text-destructive text-sm">
+                {currentSection.error_message}
+              </div>
+            )}
+
+            {currentSection?.status === 'generating' && (
+              <div className="flex items-center gap-2 text-muted-foreground text-sm py-8 justify-center">
+                <Loader2 size={18} className="animate-spin" />
+                Generating…
+              </div>
+            )}
+
+            {isEditing ? (
+              <div className="space-y-3">
+                <textarea
+                  value={draftMarkdown}
+                  onChange={(e) => setDraftMarkdown(e.target.value)}
+                  rows={16}
+                  className="w-full px-4 py-3 rounded-lg bg-input border border-border text-foreground font-mono text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 resize-none"
+                />
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => patchMutation.mutate(draftMarkdown)}
+                    disabled={patchMutation.isPending}
+                    className="px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium disabled:opacity-50"
+                  >
+                    {patchMutation.isPending ? 'Saving…' : 'Save'}
+                  </button>
+                  <button
+                    onClick={() => setIsEditing(false)}
+                    className="px-4 py-2 rounded-lg border border-border text-sm hover:bg-muted transition-colors"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            ) : (
+              currentSection?.content_markdown && (
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  className="prose prose-invert prose-sm max-w-none"
+                >
+                  <ReactMarkdown>{currentSection.content_markdown}</ReactMarkdown>
+                </motion.div>
+              )
+            )}
+
+            {!currentSection && (
+              <p className="text-sm text-muted-foreground py-8 text-center">
+                Not generated yet. Use Regenerate above once files/prompt are ready.
+              </p>
+            )}
+          </div>
+        )}
+
+        {/* Test Requests content */}
+        {tab === 'test_requests' && (
+          <div className="p-6 space-y-6">
+            {/* Assign new test */}
+            <div className="space-y-3">
+              <h3 className="text-sm font-semibold text-foreground">Assign a Test</h3>
+              <div className="flex gap-3 flex-wrap">
+                <select
+                  value={selectedEngineerId}
+                  onChange={(e) => setSelectedEngineerId(e.target.value)}
+                  className="flex-1 min-w-48 px-3 py-2 rounded-lg bg-input border border-border text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
+                >
+                  <option value="">Select engineer…</option>
+                  {engineers?.map((eng) => (
+                    <option key={eng.id} value={eng.id}>
+                      {eng.full_name} ({eng.email})
+                    </option>
+                  ))}
+                </select>
+                <button
+                  onClick={() => selectedEngineerId && createTRMutation.mutate(selectedEngineerId)}
+                  disabled={!selectedEngineerId || createTRMutation.isPending}
+                  className="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium disabled:opacity-40 disabled:cursor-not-allowed hover:bg-primary/90 transition-colors"
+                >
+                  <ClipboardList size={16} />
+                  {createTRMutation.isPending ? 'Creating…' : 'Assign Test'}
+                </button>
+              </div>
+              {engineers?.length === 0 && (
+                <p className="text-xs text-muted-foreground">
+                  No engineers yet — create accounts via Signup and promote via Admin → Users.
+                </p>
+              )}
+            </div>
+
+            {/* Existing test requests */}
+            <div className="space-y-2">
+              <h3 className="text-sm font-semibold text-foreground">Assigned Tests</h3>
+              {trLoading && (
+                <div className="flex justify-center py-8">
+                  <Loader2 className="animate-spin text-muted-foreground" size={24} />
+                </div>
+              )}
+              {!trLoading && !testRequests?.length && (
+                <div className="text-center py-8 text-sm text-muted-foreground">
+                  No test requests yet.
+                </div>
+              )}
+              {testRequests?.map((req) => (
+                <div
+                  key={req.id}
+                  className="flex items-center justify-between gap-4 bg-muted/40 rounded-lg px-4 py-3"
+                >
+                  <div className="flex items-center gap-3">
+                    <UserCheck size={16} className="text-muted-foreground shrink-0" />
+                    <div>
+                      <p className="text-sm font-medium text-foreground">
+                        {req.engineer_name ?? 'Unknown Engineer'}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {new Date(req.requested_at).toLocaleDateString()}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span
+                      className={`text-xs font-medium px-2 py-0.5 rounded-full ${
+                        TR_STATUS_STYLES[req.status] ?? 'bg-muted text-muted-foreground'
+                      }`}
+                    >
+                      {TR_STATUS_LABELS[req.status] ?? req.status}
+                    </span>
+                    {req.status === 'pending' && (
+                      <button
+                        onClick={() => approveTRMutation.mutate(req.id)}
+                        disabled={approveTRMutation.isPending}
+                        className="text-xs px-3 py-1 rounded-lg bg-accent text-accent-foreground font-medium hover:bg-accent/90 disabled:opacity-50 transition-colors"
+                      >
+                        Approve
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )

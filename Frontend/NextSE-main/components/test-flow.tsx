@@ -1,166 +1,201 @@
 'use client'
 
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { CheckCircle, Mic, RotateCcw, Volume2 } from 'lucide-react'
+import {
+  AlertCircle,
+  CheckCircle2,
+  ClipboardList,
+  Loader2,
+  XCircle,
+} from 'lucide-react'
 
-type Stage = 'select' | 'mcq' | 'voice'
+import { listEngineerTestRequests, startTest, submitMCQ } from '@/lib/api/tests'
+import type { MCQQuestion, MCQResult, TestRequest } from '@/lib/api/types'
 
-interface Test {
-  id: string
-  name: string
-  duration: string
-  questions: number
+type Stage = 'list' | 'mcq' | 'result'
+
+const STATUS_LABELS: Record<string, string> = {
+  pending: 'Pending Approval',
+  approved: 'Ready to Start',
+  in_progress: 'In Progress',
+  completed: 'Completed',
 }
 
-const tests: Test[] = [
-  { id: 'objection', name: 'Objection Handling', duration: '15 min', questions: 10 },
-  { id: 'discovery', name: 'Discovery Questions', duration: '12 min', questions: 8 },
-  { id: 'closing', name: 'Closing Techniques', duration: '18 min', questions: 12 },
-]
+const STATUS_STYLES: Record<string, string> = {
+  pending: 'bg-amber-500/15 text-amber-400',
+  approved: 'bg-primary/15 text-primary',
+  in_progress: 'bg-sky-500/15 text-sky-400',
+  completed: 'bg-emerald-500/15 text-emerald-400',
+}
 
-const mcqQuestions = [
-  {
-    id: 'q1',
-    question: 'When a customer says "It&apos;s too expensive", what should you do first?',
-    options: ['Lower the price immediately', 'Ask about their budget concerns', 'Show competitor pricing', 'Explain your value proposition'],
-    correct: 1,
-  },
-  {
-    id: 'q2',
-    question: 'What does discovery in sales mean?',
-    options: ['Finding competitors', 'Understanding customer needs and pain points', 'Discovering new products', 'Creating solutions'],
-    correct: 1,
-  },
-  {
-    id: 'q3',
-    question: 'The best time to mention price is:',
-    options: ['At the start of the call', 'After you understand their needs', 'Only if asked', 'Near the end of the presentation'],
-    correct: 1,
-  },
-]
+function StatusBadge({ status }: { status: string }) {
+  return (
+    <span
+      className={`text-xs font-medium px-2 py-0.5 rounded-full ${STATUS_STYLES[status] ?? 'bg-muted text-muted-foreground'}`}
+    >
+      {STATUS_LABELS[status] ?? status}
+    </span>
+  )
+}
 
-const voicePrompts = [
-  'You have 2 minutes to pitch our project management software to a busy operations manager who is skeptical about implementation complexity.',
-  'A customer just said "Your solution is good but your competitor offers 30% more features." Respond and overcome this objection.',
-  'Guide a prospect through a discovery conversation by asking 3-4 discovery questions to understand their challenges.',
-]
-
-// Still mock — Phase 3 wires this to real test_requests + MCQ, Phase 4 to the realtime voice stage.
 export function TestFlow() {
-  const [stage, setStage] = useState<Stage>('select')
-  const [selectedTest, setSelectedTest] = useState<string | null>(null)
-  const [currentQuestion, setCurrentQuestion] = useState(0)
-  const [selectedAnswers, setSelectedAnswers] = useState<Record<string, number>>({})
-  const [isRecording, setIsRecording] = useState(false)
-  const [recordingTime, setRecordingTime] = useState(0)
-  const [voiceIndex, setVoiceIndex] = useState(0)
-  const [testCompleted, setTestCompleted] = useState(false)
+  const queryClient = useQueryClient()
+  const [stage, setStage] = useState<Stage>('list')
+  const [activeRequest, setActiveRequest] = useState<TestRequest | null>(null)
+  const [questions, setQuestions] = useState<MCQQuestion[]>([])
+  const [currentQ, setCurrentQ] = useState(0)
+  const [answers, setAnswers] = useState<Record<string, number>>({})
+  const [result, setResult] = useState<MCQResult | null>(null)
+  const [startError, setStartError] = useState<string | null>(null)
 
-  const handleStartTest = (testId: string) => {
-    setSelectedTest(testId)
+  const { data: testRequests, isLoading } = useQuery({
+    queryKey: ['test-requests'],
+    queryFn: listEngineerTestRequests,
+  })
+
+  const startMutation = useMutation({
+    mutationFn: (requestId: string) => startTest(requestId),
+    onSuccess: (data) => {
+      setQuestions(data.questions)
+      setAnswers({})
+      setCurrentQ(0)
+      setStartError(null)
+    },
+    onError: (err) => {
+      setStartError(err instanceof Error ? err.message : 'Failed to load questions')
+      setStage('list')
+    },
+  })
+
+  const submitMutation = useMutation({
+    mutationFn: (answersList: { question_id: string; selected_option_index: number }[]) =>
+      submitMCQ(activeRequest!.id, answersList),
+    onSuccess: (data) => {
+      setResult(data)
+      setStage('result')
+      queryClient.invalidateQueries({ queryKey: ['test-requests'] })
+    },
+  })
+
+  const handleStart = (request: TestRequest) => {
+    setActiveRequest(request)
+    setStartError(null)
     setStage('mcq')
-    setCurrentQuestion(0)
-    setSelectedAnswers({})
+    startMutation.mutate(request.id)
   }
 
-  const handleAnswerMCQ = (optionIdx: number) => {
-    const qId = mcqQuestions[currentQuestion].id
-    setSelectedAnswers((prev) => ({ ...prev, [qId]: optionIdx }))
+  const handleAnswer = (optionIdx: number) => {
+    const qId = questions[currentQ]?.id
+    if (!qId) return
+    setAnswers((prev) => ({ ...prev, [qId]: optionIdx }))
   }
 
-  const handleNextQuestion = () => {
-    if (currentQuestion < mcqQuestions.length - 1) {
-      setCurrentQuestion(currentQuestion + 1)
-    } else {
-      setStage('voice')
-      setVoiceIndex(0)
-    }
+  const handleNext = () => {
+    if (currentQ < questions.length - 1) setCurrentQ((q) => q + 1)
   }
 
-  const handleRecordToggle = () => {
-    if (!isRecording) {
-      setIsRecording(true)
-      setRecordingTime(0)
-      const interval = setInterval(() => {
-        setRecordingTime((t) => {
-          if (t >= 120) {
-            clearInterval(interval)
-            setIsRecording(false)
-            return t
-          }
-          return t + 1
-        })
-      }, 1000)
-    } else {
-      setIsRecording(false)
-    }
+  const handleSubmit = () => {
+    const answersList = Object.entries(answers).map(([question_id, selected_option_index]) => ({
+      question_id,
+      selected_option_index,
+    }))
+    submitMutation.mutate(answersList)
   }
 
-  const handleNextVoice = () => {
-    if (voiceIndex < voicePrompts.length - 1) {
-      setVoiceIndex(voiceIndex + 1)
-      setIsRecording(false)
-      setRecordingTime(0)
-    } else {
-      setTestCompleted(true)
-    }
+  const handleDone = () => {
+    setStage('list')
+    setActiveRequest(null)
+    setResult(null)
+    setQuestions([])
+    setAnswers({})
+    setCurrentQ(0)
   }
 
-  const formatTime = (seconds: number) => {
-    const mins = Math.floor(seconds / 60)
-    const secs = seconds % 60
-    return `${mins}:${secs.toString().padStart(2, '0')}`
-  }
+  const currentAnswer = questions[currentQ] ? answers[questions[currentQ].id] : undefined
+  const isLastQuestion = currentQ === questions.length - 1
+  const allAnswered = questions.length > 0 && questions.every((q) => answers[q.id] !== undefined)
 
   return (
     <div className="max-w-3xl mx-auto">
       <AnimatePresence mode="wait">
-        {/* Test Selection */}
-        {stage === 'select' && (
+        {/* ── LIST ── */}
+        {stage === 'list' && (
           <motion.div
-            key="select"
+            key="list"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
             className="space-y-6"
           >
-            <motion.div
-              initial={{ opacity: 0, y: -20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5 }}
-            >
+            <div>
               <h1 className="text-3xl font-bold">Test Flow</h1>
-              <p className="text-muted-foreground mt-2">Challenge yourself with MCQ and voice bot practice</p>
-            </motion.div>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {tests.map((test, idx) => (
-                <motion.button
-                  key={test.id}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: idx * 0.1 }}
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  onClick={() => handleStartTest(test.id)}
-                  className="bg-card border border-border rounded-lg p-6 text-left hover:border-primary/50 transition-all"
-                >
-                  <h3 className="text-lg font-bold mb-2">{test.name}</h3>
-                  <p className="text-sm text-muted-foreground mb-4">{test.questions} questions</p>
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs text-muted-foreground">{test.duration}</span>
-                    <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center">
-                      <CheckCircle size={18} className="text-primary" />
-                    </div>
-                  </div>
-                </motion.button>
-              ))}
+              <p className="text-muted-foreground mt-2">
+                Complete your assigned client assessments
+              </p>
             </div>
+
+            {startError && (
+              <div className="flex items-start gap-3 bg-destructive/10 border border-destructive/30 rounded-lg p-4 text-destructive text-sm">
+                <AlertCircle size={18} className="shrink-0 mt-0.5" />
+                {startError}
+              </div>
+            )}
+
+            {isLoading && (
+              <div className="flex justify-center py-16">
+                <Loader2 className="animate-spin text-muted-foreground" size={32} />
+              </div>
+            )}
+
+            {!isLoading && !testRequests?.length && (
+              <div className="text-center py-16 bg-card border border-border rounded-xl">
+                <ClipboardList className="mx-auto mb-3 text-muted-foreground" size={40} />
+                <p className="font-semibold text-foreground mb-2">No Tests Assigned</p>
+                <p className="text-muted-foreground text-sm">
+                  An admin will assign a client test when you&apos;re ready.
+                </p>
+              </div>
+            )}
+
+            {testRequests && testRequests.length > 0 && (
+              <div className="space-y-3">
+                {testRequests.map((req) => (
+                  <motion.div
+                    key={req.id}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="bg-card border border-border rounded-xl p-6 flex items-center justify-between gap-4"
+                  >
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-3">
+                        <h3 className="font-semibold text-foreground">
+                          {req.client_name ?? 'Unknown Client'}
+                        </h3>
+                        <StatusBadge status={req.status} />
+                      </div>
+                      <p className="text-sm text-muted-foreground">
+                        Assigned {new Date(req.requested_at).toLocaleDateString()}
+                      </p>
+                    </div>
+
+                    {(req.status === 'approved' || req.status === 'in_progress') && (
+                      <button
+                        onClick={() => handleStart(req)}
+                        className="shrink-0 px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors"
+                      >
+                        {req.status === 'in_progress' ? 'Resume' : 'Start Test'}
+                      </button>
+                    )}
+                  </motion.div>
+                ))}
+              </div>
+            )}
           </motion.div>
         )}
 
-        {/* MCQ Stage */}
+        {/* ── MCQ ── */}
         {stage === 'mcq' && (
           <motion.div
             key="mcq"
@@ -169,186 +204,205 @@ export function TestFlow() {
             exit={{ opacity: 0, y: -20 }}
             className="space-y-6"
           >
-            {/* Progress */}
-            <div>
-              <div className="flex justify-between items-center mb-2">
-                <h2 className="font-bold">MCQ Stage</h2>
-                <span className="text-sm text-muted-foreground">
-                  {currentQuestion + 1}/{mcqQuestions.length}
-                </span>
+            {/* loading while generating questions */}
+            {startMutation.isPending && (
+              <div className="text-center py-24 space-y-4">
+                <Loader2 className="animate-spin mx-auto text-primary" size={40} />
+                <p className="text-muted-foreground">Generating questions for {activeRequest?.client_name}…</p>
+                <p className="text-xs text-muted-foreground">This may take a few seconds</p>
               </div>
-              <div className="w-full bg-muted rounded-full h-2">
-                <motion.div
-                  className="bg-primary h-2 rounded-full"
-                  initial={{ width: 0 }}
-                  animate={{ width: `${((currentQuestion + 1) / mcqQuestions.length) * 100}%` }}
-                  transition={{ duration: 0.5 }}
-                />
-              </div>
-            </div>
+            )}
 
-            {/* Question */}
-            <motion.div
-              key={`q-${currentQuestion}`}
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -20 }}
-              className="bg-card border border-border rounded-lg p-8"
-            >
-              <h3 className="text-2xl font-bold mb-6">{mcqQuestions[currentQuestion].question}</h3>
-
-              <div className="space-y-3">
-                {mcqQuestions[currentQuestion].options.map((option, idx) => (
-                  <motion.button
-                    key={idx}
-                    whileHover={{ x: 4 }}
-                    whileTap={{ scale: 0.98 }}
-                    onClick={() => handleAnswerMCQ(idx)}
-                    className={`w-full text-left px-4 py-3 rounded-lg border-2 transition-all ${
-                      selectedAnswers[mcqQuestions[currentQuestion].id] === idx
-                        ? 'border-primary bg-primary/10'
-                        : 'border-border hover:border-primary/50'
-                    }`}
-                  >
-                    <div className="flex items-center gap-3">
-                      <div
-                        className={`w-5 h-5 rounded border-2 flex items-center justify-center ${
-                          selectedAnswers[mcqQuestions[currentQuestion].id] === idx
-                            ? 'border-primary bg-primary'
-                            : 'border-border'
-                        }`}
-                      >
-                        {selectedAnswers[mcqQuestions[currentQuestion].id] === idx && (
-                          <CheckCircle size={16} className="text-white" />
-                        )}
-                      </div>
-                      <span>{option}</span>
+            {/* questions ready */}
+            {!startMutation.isPending && questions.length > 0 && (
+              <>
+                {/* header + progress */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h2 className="text-xl font-bold">MCQ Assessment</h2>
+                      <p className="text-sm text-muted-foreground">{activeRequest?.client_name}</p>
                     </div>
-                  </motion.button>
-                ))}
-              </div>
-            </motion.div>
+                    <span className="text-sm text-muted-foreground">
+                      {currentQ + 1} / {questions.length}
+                    </span>
+                  </div>
+                  <div className="w-full bg-muted rounded-full h-2 overflow-hidden">
+                    <motion.div
+                      className="h-full bg-primary rounded-full"
+                      animate={{ width: `${((currentQ + 1) / questions.length) * 100}%` }}
+                      transition={{ duration: 0.4 }}
+                    />
+                  </div>
+                </div>
 
-            {/* Navigation */}
-            <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              onClick={handleNextQuestion}
-              disabled={selectedAnswers[mcqQuestions[currentQuestion].id] === undefined}
-              className="w-full py-3 rounded-lg bg-primary text-primary-foreground font-medium hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-            >
-              {currentQuestion === mcqQuestions.length - 1 ? 'Move to Voice Practice' : 'Next Question'}
-            </motion.button>
+                {/* question card */}
+                <AnimatePresence mode="wait">
+                  <motion.div
+                    key={`q-${currentQ}`}
+                    initial={{ opacity: 0, x: 30 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: -30 }}
+                    transition={{ duration: 0.25 }}
+                    className="bg-card border border-border rounded-xl p-8 space-y-6"
+                  >
+                    {questions[currentQ].difficulty && (
+                      <span className="text-xs text-muted-foreground capitalize bg-muted px-2 py-0.5 rounded">
+                        {questions[currentQ].difficulty}
+                      </span>
+                    )}
+                    <h3 className="text-xl font-semibold text-foreground leading-snug">
+                      {questions[currentQ].question_text}
+                    </h3>
+                    <div className="space-y-3">
+                      {questions[currentQ].options.map((option, idx) => (
+                        <button
+                          key={idx}
+                          onClick={() => handleAnswer(idx)}
+                          className={`w-full text-left px-4 py-3 rounded-lg border-2 transition-all text-sm ${
+                            currentAnswer === idx
+                              ? 'border-primary bg-primary/10 text-foreground'
+                              : 'border-border hover:border-primary/50 text-foreground'
+                          }`}
+                        >
+                          <span className="font-medium mr-2 text-muted-foreground">
+                            {String.fromCharCode(65 + idx)}.
+                          </span>
+                          {option}
+                        </button>
+                      ))}
+                    </div>
+                  </motion.div>
+                </AnimatePresence>
+
+                {/* navigation */}
+                {isLastQuestion ? (
+                  <button
+                    onClick={handleSubmit}
+                    disabled={!allAnswered || submitMutation.isPending}
+                    className="w-full py-3 rounded-lg bg-accent text-accent-foreground font-medium hover:bg-accent/90 disabled:opacity-40 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
+                  >
+                    {submitMutation.isPending ? (
+                      <><Loader2 size={18} className="animate-spin" /> Submitting…</>
+                    ) : (
+                      'Submit Answers'
+                    )}
+                  </button>
+                ) : (
+                  <button
+                    onClick={handleNext}
+                    disabled={currentAnswer === undefined}
+                    className="w-full py-3 rounded-lg bg-primary text-primary-foreground font-medium hover:bg-primary/90 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                  >
+                    Next Question
+                  </button>
+                )}
+
+                <button
+                  onClick={handleDone}
+                  className="w-full text-sm text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  ← Save and return later
+                </button>
+              </>
+            )}
           </motion.div>
         )}
 
-        {/* Voice Stage */}
-        {stage === 'voice' && !testCompleted && (
+        {/* ── RESULT ── */}
+        {stage === 'result' && result && (
           <motion.div
-            key="voice"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
+            key="result"
+            initial={{ opacity: 0, scale: 0.97 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0 }}
             className="space-y-6"
           >
-            {/* Progress */}
-            <div>
-              <div className="flex justify-between items-center mb-2">
-                <h2 className="font-bold">Voice Bot Practice</h2>
-                <span className="text-sm text-muted-foreground">
-                  {voiceIndex + 1}/{voicePrompts.length}
-                </span>
+            {/* score hero */}
+            <div className="bg-card border border-border rounded-xl p-8 text-center space-y-4">
+              <div
+                className={`w-20 h-20 rounded-full flex items-center justify-center mx-auto border-2 ${
+                  result.passed
+                    ? 'bg-emerald-500/15 border-emerald-500'
+                    : 'bg-destructive/15 border-destructive'
+                }`}
+              >
+                {result.passed ? (
+                  <CheckCircle2 size={40} className="text-emerald-400" />
+                ) : (
+                  <XCircle size={40} className="text-destructive" />
+                )}
               </div>
-              <div className="w-full bg-muted rounded-full h-2">
-                <motion.div
-                  className="bg-secondary h-2 rounded-full"
-                  initial={{ width: 0 }}
-                  animate={{ width: `${((voiceIndex + 1) / voicePrompts.length) * 100}%` }}
-                  transition={{ duration: 0.5 }}
-                />
+              <div>
+                <p className="text-5xl font-bold text-foreground">{result.score_percent}%</p>
+                <p className="text-muted-foreground mt-1">
+                  {result.correct} / {result.total} correct
+                </p>
+              </div>
+              <div
+                className={`inline-block text-sm font-semibold px-4 py-1.5 rounded-full ${
+                  result.passed
+                    ? 'bg-emerald-500/15 text-emerald-400'
+                    : 'bg-destructive/15 text-destructive'
+                }`}
+              >
+                {result.passed ? 'Passed (≥70%)' : 'Did not pass (<70%)'}
+              </div>
+              {!result.passed && (
+                <p className="text-sm text-muted-foreground">
+                  Review the study materials and ask your admin to assign a new test.
+                </p>
+              )}
+            </div>
+
+            {/* question breakdown */}
+            <div className="bg-card border border-border rounded-xl overflow-hidden">
+              <div className="px-6 py-4 border-b border-border">
+                <h3 className="font-semibold">Answer Breakdown</h3>
+              </div>
+              <div className="divide-y divide-border">
+                {result.question_results.map((qr, idx) => {
+                  const q = questions.find((q) => q.id === qr.question_id)
+                  return (
+                    <div key={qr.question_id} className="p-4 space-y-2">
+                      <div className="flex items-start gap-3">
+                        {qr.is_correct ? (
+                          <CheckCircle2 size={18} className="text-emerald-400 shrink-0 mt-0.5" />
+                        ) : (
+                          <XCircle size={18} className="text-destructive shrink-0 mt-0.5" />
+                        )}
+                        <div className="flex-1 space-y-1">
+                          <p className="text-sm font-medium text-foreground">
+                            Q{idx + 1}. {q?.question_text ?? `Question ${idx + 1}`}
+                          </p>
+                          {!qr.is_correct && q && (
+                            <>
+                              <p className="text-xs text-destructive">
+                                Your answer: {qr.selected_option_index >= 0
+                                  ? q.options[qr.selected_option_index]
+                                  : 'Not answered'}
+                              </p>
+                              <p className="text-xs text-emerald-400">
+                                Correct: {q.options[qr.correct_option_index]}
+                              </p>
+                            </>
+                          )}
+                          {qr.explanation && (
+                            <p className="text-xs text-muted-foreground italic">{qr.explanation}</p>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  )
+                })}
               </div>
             </div>
 
-            {/* Prompt */}
-            <motion.div
-              key={`voice-${voiceIndex}`}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-              className="bg-gradient-to-br from-secondary/20 to-primary/10 border border-secondary/50 rounded-lg p-8"
-            >
-              <div className="flex items-start gap-3 mb-4">
-                <Volume2 className="text-secondary mt-1" size={24} />
-                <h3 className="text-xl font-bold">Practice Scenario</h3>
-              </div>
-              <p className="text-lg leading-relaxed">{voicePrompts[voiceIndex]}</p>
-            </motion.div>
-
-            {/* Recording Section */}
-            <motion.div
-              className="bg-card border border-border rounded-lg p-8 text-center"
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ delay: 0.2 }}
-            >
-              <p className="text-muted-foreground mb-6">Maximum 2 minutes</p>
-
-              <motion.button
-                whileHover={isRecording ? {} : { scale: 1.1 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={handleRecordToggle}
-                className={`mx-auto mb-4 w-20 h-20 rounded-full flex items-center justify-center transition-all ${
-                  isRecording
-                    ? 'bg-red-500/20 border-2 border-red-500 animate-pulse'
-                    : 'bg-primary/20 border-2 border-primary hover:bg-primary/30'
-                }`}
-              >
-                <Mic size={32} className={isRecording ? 'text-red-500' : 'text-primary'} />
-              </motion.button>
-
-              {isRecording && (
-                <motion.p
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  className="text-lg font-bold text-red-500 mb-4"
-                >
-                  Recording... {formatTime(recordingTime)}
-                </motion.p>
-              )}
-
-              <button
-                onClick={handleNextVoice}
-                className="w-full py-3 rounded-lg bg-secondary text-secondary-foreground font-medium hover:bg-secondary/90 transition-all"
-              >
-                {voiceIndex === voicePrompts.length - 1 ? 'Complete Test' : 'Next Scenario'}
-              </button>
-            </motion.div>
-          </motion.div>
-        )}
-
-        {/* Completion */}
-        {testCompleted && (
-          <motion.div
-            key="complete"
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="text-center py-12"
-          >
-            <motion.div
-              initial={{ scale: 0 }}
-              animate={{ scale: 1 }}
-              transition={{ type: 'spring', delay: 0.2 }}
-              className="w-20 h-20 rounded-full bg-emerald-500/20 border-2 border-emerald-500 flex items-center justify-center mx-auto mb-6"
-            >
-              <CheckCircle size={40} className="text-emerald-400" />
-            </motion.div>
-            <h2 className="text-3xl font-bold mb-2">Test Complete!</h2>
-            <p className="text-muted-foreground mb-6">Great job! Your responses are being analyzed.</p>
             <button
-              onClick={() => setStage('select')}
-              className="px-6 py-3 rounded-lg bg-primary text-primary-foreground font-medium hover:bg-primary/90 transition-all"
+              onClick={handleDone}
+              className="w-full py-3 rounded-lg bg-primary text-primary-foreground font-medium hover:bg-primary/90 transition-colors"
             >
-              Take Another Test
+              Back to Tests
             </button>
           </motion.div>
         )}

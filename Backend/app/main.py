@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import settings
-from app.routers import admin_users, auth, clients, files, generation, study
+from app.routers import admin_users, auth, clients, files, generation, study, tests
 
 app = FastAPI(title="SalesPrep AI API", version="0.1.0")
 
@@ -20,6 +20,7 @@ app.include_router(clients.router)
 app.include_router(files.router)
 app.include_router(generation.router)
 app.include_router(study.router)
+app.include_router(tests.router)
 
 
 @app.get("/health", tags=["health"])
