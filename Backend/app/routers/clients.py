@@ -7,6 +7,7 @@ from sqlalchemy import select
 from app.crud import get_latest_version, get_visible_client
 from app.deps import AdminProfile, CurrentProfile, DbSession
 from app.models import Client, ClientFile, ClientProfileGenerated, SalesPitch, StudyMaterial
+from app.models.testing import TestRequest
 from app.schemas.client import (
     ClientCreate,
     ClientDetailOut,
@@ -42,8 +43,11 @@ async def list_clients(
     industry: str | None = None,
 ) -> list[Client]:
     query = select(Client)
-    if profile.role != "admin":
-        # Non-admins may only ever see published clients, regardless of the query param.
+    if profile.role == "engineer":
+        # Engineers only see clients they have been explicitly assigned to.
+        assigned_ids = select(TestRequest.client_id).where(TestRequest.engineer_id == profile.id)
+        query = query.where(Client.status == "published").where(Client.id.in_(assigned_ids))
+    elif profile.role != "admin":
         query = query.where(Client.status == "published")
     elif status_filter:
         query = query.where(Client.status == status_filter)
