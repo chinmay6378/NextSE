@@ -19,3 +19,10 @@ export function updateEngineerProgress(clientId: string, sectionId: string, stud
     body: { section_id: sectionId, studied },
   })
 }
+
+export function resolveStudyVideos(clientId: string) {
+  return apiFetch<{ status: string; resolved: number; total: number }>(
+    `/clients/${clientId}/study-material/resolve-videos`,
+    { method: 'POST' },
+  )
+}

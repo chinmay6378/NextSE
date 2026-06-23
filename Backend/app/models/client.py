@@ -23,6 +23,8 @@ class Client(Base):
     id: Mapped[uuid.UUID] = uuid_pk()
     name: Mapped[str] = mapped_column(String, nullable=False)
     industry: Mapped[str] = mapped_column(String, nullable=False)
+    target_industries: Mapped[list] = mapped_column(JSONB, nullable=False, server_default="[]")
+    target_locations: Mapped[list] = mapped_column(JSONB, nullable=False, server_default="[]")
     status: Mapped[str] = mapped_column(ClientStatus, nullable=False, server_default="draft")
     created_by: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("profiles.id"), nullable=False
@@ -41,6 +43,7 @@ class ClientFile(Base):
     file_name: Mapped[str] = mapped_column(String, nullable=False)
     storage_path: Mapped[str] = mapped_column(String, nullable=False)
     mime_type: Mapped[str] = mapped_column(String, nullable=False)
+    file_category: Mapped[str | None] = mapped_column(String(50), nullable=True)
     extracted_text: Mapped[str | None] = mapped_column(Text, nullable=True)
     extraction_status: Mapped[str] = mapped_column(
         ExtractionStatus, nullable=False, server_default="pending"

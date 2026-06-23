@@ -19,6 +19,8 @@ class TestRequestOut(BaseModel):
     responded_at: datetime | None = None
     client_name: str | None = None
     engineer_name: str | None = None
+    score_percent: float | None = None
+    passed: bool | None = None
 
 
 class MCQQuestionOut(BaseModel):

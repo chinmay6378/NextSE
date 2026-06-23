@@ -13,8 +13,8 @@ const geistMono = Geist_Mono({
 })
 
 export const metadata: Metadata = {
-  title: 'SalesPrep AI',
-  description: 'Master sales skills with AI-powered test prep and voice coaching',
+  title: 'NextSE',
+  description: 'AI-powered Sales Engineering training — study smarter, assess faster, pitch with confidence.',
   generator: 'v0.app',
   icons: {
     icon: [
@@ -28,10 +28,8 @@ export const metadata: Metadata = {
 }
 
 export const viewport: Viewport = {
-  colorScheme: 'dark',
-  themeColor: [
-    { media: '(prefers-color-scheme: dark)', color: '#141414' },
-  ],
+  colorScheme: 'light',
+  themeColor: '#ffffff',
   userScalable: true,
 }
 
@@ -41,12 +39,12 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="en" className={`dark bg-background ${geistSans.variable} ${geistMono.variable}`}>
+    <html lang="en" className={`bg-background ${geistSans.variable} ${geistMono.variable}`}>
       <body className="font-sans antialiased">
         <QueryProvider>
           <AuthProvider>
             {children}
-            <Toaster theme="dark" />
+            <Toaster theme="light" position="bottom-right" />
             {process.env.NODE_ENV === 'production' && <Analytics />}
           </AuthProvider>
         </QueryProvider>

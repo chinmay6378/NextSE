@@ -15,8 +15,14 @@ export class ApiError extends Error {
 
 async function authHeaders(): Promise<Record<string, string>> {
   const supabase = createClient()
-  const { data } = await supabase.auth.getSession()
-  const token = data.session?.access_token
+  // Race against 3s timeout so API calls never hang waiting for token refresh
+  const result = await Promise.race([
+    supabase.auth.getSession(),
+    new Promise<{ data: { session: null } }>((resolve) =>
+      setTimeout(() => resolve({ data: { session: null } }), 3000)
+    ),
+  ])
+  const token = result.data.session?.access_token
   return token ? { Authorization: `Bearer ${token}` } : {}
 }
 

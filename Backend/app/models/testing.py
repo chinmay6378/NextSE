@@ -1,7 +1,7 @@
 import datetime
 import uuid
 
-from sqlalchemy import Boolean, DateTime, func
+from sqlalchemy import BigInteger, Boolean, DateTime, func
 from sqlalchemy import Enum as SAEnum
 from sqlalchemy import ForeignKey, Integer, Numeric, String, Text, UniqueConstraint
 from sqlalchemy.dialects.postgresql import JSONB, UUID
@@ -133,7 +133,7 @@ class VoiceTranscript(Base):
     )
     speaker: Mapped[str] = mapped_column(VoiceSpeaker, nullable=False)
     message: Mapped[str] = mapped_column(Text, nullable=False)
-    timestamp_ms: Mapped[int] = mapped_column(Integer, nullable=False)
+    timestamp_ms: Mapped[int] = mapped_column(BigInteger, nullable=False)
     sequence_index: Mapped[int] = mapped_column(Integer, nullable=False)
 
 

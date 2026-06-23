@@ -47,12 +47,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const supabase = createClient()
     let active = true
+    let settled = false
+
+    // If getSession() hangs (Supabase token refresh can stall), unblock the UI
+    // after 4 seconds and send the user to /login for a clean re-auth.
+    const safetyTimer = setTimeout(() => {
+      if (active && !settled) {
+        settled = true
+        setLoading(false)
+        window.location.href = '/login'
+      }
+    }, 4000)
 
     supabase.auth.getSession().then(async ({ data }) => {
       if (!active) return
-      setSession(data.session)
-      if (data.session) await loadProfile()
-      setLoading(false)
+      clearTimeout(safetyTimer)
+      if (!settled) {
+        settled = true
+        setSession(data.session)
+        if (data.session) await loadProfile()
+        setLoading(false)
+      }
     })
 
     const { data: listener } = supabase.auth.onAuthStateChange(async (_event, newSession) => {
@@ -68,6 +83,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     return () => {
       active = false
+      clearTimeout(safetyTimer)
       listener.subscription.unsubscribe()
     }
   }, [loadProfile])

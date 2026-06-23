@@ -1,6 +1,7 @@
 import uuid
+from typing import Annotated
 
-from fastapi import APIRouter, BackgroundTasks, File, HTTPException, UploadFile, status
+from fastapi import APIRouter, BackgroundTasks, File, HTTPException, Query, UploadFile, status
 
 from app.deps import AdminProfile, DbSession
 from app.models import Client, ClientFile
@@ -20,6 +21,7 @@ async def upload_files(
     db: DbSession,
     _profile: AdminProfile,
     files: list[UploadFile] = File(...),
+    file_category: Annotated[str | None, Query(max_length=50)] = None,
 ) -> list[ClientFile]:
     client = await db.get(Client, client_id)
     if client is None:
@@ -40,6 +42,7 @@ async def upload_files(
             file_name=upload.filename or "file",
             storage_path=storage_path,
             mime_type=upload.content_type or "application/octet-stream",
+            file_category=file_category,
         )
         db.add(row)
         created.append(row)
@@ -50,6 +53,20 @@ async def upload_files(
         background_tasks.add_task(process_client_file, row.id)
 
     return created
+
+
+@router.get("/{client_id}/files/{file_id}/signed-url")
+async def get_file_signed_url(
+    client_id: uuid.UUID,
+    file_id: uuid.UUID,
+    db: DbSession,
+    _profile: AdminProfile,
+) -> dict:
+    row = await db.get(ClientFile, file_id)
+    if row is None or row.client_id != client_id:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="File not found")
+    url = await storage.create_signed_url(row.storage_path)
+    return {"url": url, "expires_in": 3600}
 
 
 @router.delete("/{client_id}/files/{file_id}", status_code=status.HTTP_204_NO_CONTENT)

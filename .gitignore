@@ -18,6 +18,9 @@ __pycache__/
 .env.local
 .env.*.local
 
+# Docker / nginx SSL certs (never commit)
+nginx/certbot/
+
 # OS / editor
 .DS_Store
 Thumbs.db

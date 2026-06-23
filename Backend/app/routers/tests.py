@@ -30,6 +30,8 @@ def _req_out(
     req: TestRequest,
     client_name: str | None = None,
     engineer_name: str | None = None,
+    score_percent: float | None = None,
+    passed: bool | None = None,
 ) -> TestRequestOut:
     return TestRequestOut(
         id=req.id,
@@ -41,16 +43,19 @@ def _req_out(
         responded_at=req.responded_at,
         client_name=client_name,
         engineer_name=engineer_name,
+        score_percent=score_percent,
+        passed=passed,
     )
 
 
 async def _enrich(db: AsyncSession, requests: list[TestRequest]) -> list[TestRequestOut]:
-    """Batch-fetch client and engineer names, then build TestRequestOut list."""
+    """Batch-fetch client names, engineer names, and MCQ scores, then build TestRequestOut list."""
     if not requests:
         return []
 
     client_ids = {r.client_id for r in requests}
     engineer_ids = {r.engineer_id for r in requests}
+    request_ids = {r.id for r in requests}
 
     client_rows = (
         await db.execute(select(Client).where(Client.id.in_(client_ids)))
@@ -58,12 +63,24 @@ async def _enrich(db: AsyncSession, requests: list[TestRequest]) -> list[TestReq
     engineer_rows = (
         await db.execute(select(Profile).where(Profile.id.in_(engineer_ids)))
     ).scalars().all()
+    attempt_rows = (
+        await db.execute(select(MCQAttempt).where(MCQAttempt.test_request_id.in_(request_ids)))
+    ).scalars().all()
 
     client_names: dict[uuid.UUID, str] = {c.id: c.name for c in client_rows}
     engineer_names: dict[uuid.UUID, str] = {p.id: p.full_name for p in engineer_rows}
+    attempt_scores: dict[uuid.UUID, tuple[float, bool]] = {
+        a.test_request_id: (float(a.score_percent), bool(a.passed)) for a in attempt_rows
+    }
 
     return [
-        _req_out(r, client_name=client_names.get(r.client_id), engineer_name=engineer_names.get(r.engineer_id))
+        _req_out(
+            r,
+            client_name=client_names.get(r.client_id),
+            engineer_name=engineer_names.get(r.engineer_id),
+            score_percent=attempt_scores.get(r.id, (None, None))[0],
+            passed=attempt_scores.get(r.id, (None, None))[1],
+        )
         for r in requests
     ]
 

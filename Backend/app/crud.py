@@ -8,11 +8,25 @@ from app.models import Client, Profile
 
 
 async def get_latest_version(db: AsyncSession, model, client_id: uuid.UUID):
-    """Fetch the highest-`version` row for a client from one of the three
-    generated-content tables (ClientProfileGenerated/StudyMaterial/SalesPitch)
-    — they all share the same (client_id, version) shape."""
+    """Fetch the highest-`version` row regardless of status (used by admin paths)."""
     result = await db.execute(
         select(model).where(model.client_id == client_id).order_by(model.version.desc()).limit(1)
+    )
+    return result.scalars().first()
+
+
+async def get_ready_version(db: AsyncSession, model, client_id: uuid.UUID):
+    """Fetch the latest 'ready' or 'edited' version (used by engineer-facing endpoints).
+
+    Engineers should never see 'generating' or 'failed' rows — return only
+    content that was successfully produced so study material is always visible
+    even if a subsequent regeneration is still in progress or failed.
+    """
+    result = await db.execute(
+        select(model)
+        .where(model.client_id == client_id, model.status.in_(["ready", "edited"]))
+        .order_by(model.version.desc())
+        .limit(1)
     )
     return result.scalars().first()
 

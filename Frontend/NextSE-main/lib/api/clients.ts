@@ -17,22 +17,32 @@ export function getClient(clientId: string) {
   return apiFetch<ClientDetail>(`/clients/${clientId}`)
 }
 
-export function createClient(payload: { name: string; industry: string }) {
+export function createClient(payload: {
+  name: string
+  industry: string
+  target_industries: string[]
+  target_locations: string[]
+}) {
   return apiFetch<Client>('/clients', { method: 'POST', body: payload })
 }
 
-export function uploadClientFiles(clientId: string, files: File[]) {
+export function uploadClientFiles(clientId: string, files: File[], fileCategory?: string) {
   const formData = new FormData()
   files.forEach((file) => formData.append('files', file))
   return apiFetch<ClientFile[]>(`/clients/${clientId}/files`, {
     method: 'POST',
     body: formData,
     isFormData: true,
+    searchParams: fileCategory ? { file_category: fileCategory } : undefined,
   })
 }
 
 export function deleteClientFile(clientId: string, fileId: string) {
   return apiFetch<void>(`/clients/${clientId}/files/${fileId}`, { method: 'DELETE' })
+}
+
+export function getFileSignedUrl(clientId: string, fileId: string) {
+  return apiFetch<{ url: string; expires_in: number }>(`/clients/${clientId}/files/${fileId}/signed-url`)
 }
 
 export function generateProfile(clientId: string, customPrompt: string) {

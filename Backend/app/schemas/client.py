@@ -13,6 +13,8 @@ Section = Literal["profile", "study_material", "sales_pitch"]
 class ClientCreate(BaseModel):
     name: str = Field(min_length=1, max_length=200)
     industry: str = Field(min_length=1, max_length=200)
+    target_industries: list[str] = Field(default_factory=list)
+    target_locations: list[str] = Field(default_factory=list)
 
 
 class ClientOut(BaseModel):
@@ -21,6 +23,8 @@ class ClientOut(BaseModel):
     id: uuid.UUID
     name: str
     industry: str
+    target_industries: list[str]
+    target_locations: list[str]
     status: ClientStatus
     created_by: uuid.UUID
     created_at: datetime
@@ -34,6 +38,7 @@ class ClientFileOut(BaseModel):
     client_id: uuid.UUID
     file_name: str
     mime_type: str
+    file_category: str | None = None
     extraction_status: ExtractionStatus
     uploaded_at: datetime
 

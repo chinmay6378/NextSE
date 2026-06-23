@@ -21,9 +21,18 @@ class Settings(BaseSettings):
     openai_text_model: str = "gpt-4o"
     openai_realtime_model: str = "gpt-4o-realtime-preview"
 
+    # Groq (STT + LLM)
+    groq_api_key: str = ""
+
+    # ElevenLabs (TTS)
+    elevenlabs_api_key: str = ""
+
     # App
     frontend_url: str = "http://localhost:3000"
     environment: str = "development"
+
+    # YouTube Data API v3 (optional — resolves search queries to specific video IDs)
+    youtube_api_key: str = ""
 
     # Test / certification config
     mcq_default_question_count: int = 10

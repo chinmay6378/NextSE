@@ -18,6 +18,8 @@ export interface Client {
   id: string
   name: string
   industry: string
+  target_industries: string[]
+  target_locations: string[]
   status: ClientStatus
   created_by: string
   created_at: string
@@ -29,6 +31,7 @@ export interface ClientFile {
   client_id: string
   file_name: string
   mime_type: string
+  file_category: string | null
   extraction_status: ExtractionStatus
   uploaded_at: string
 }
@@ -79,10 +82,17 @@ export interface Flashcard {
   back: string
 }
 
+export interface YoutubeVideo {
+  title: string
+  query: string
+  video_id?: string | null
+}
+
 export interface StudyMaterialContent {
   modules: StudyModule[]
   flashcards: Flashcard[]
   cheat_sheet: string
+  youtube_videos?: YoutubeVideo[]
 }
 
 export interface EngineerProgress {
@@ -104,6 +114,22 @@ export interface TestRequest {
   responded_at: string | null
   client_name: string | null
   engineer_name: string | null
+  score_percent: number | null
+  passed: boolean | null
+}
+
+export interface ResultOut {
+  id: string
+  test_request_id: string
+  engineer_id: string
+  engineer_name: string | null
+  client_id: string
+  client_name: string | null
+  knowledge_score: number | null
+  communication_score: number | null
+  overall_score: number | null
+  status: string
+  created_at: string
 }
 
 export interface MCQQuestion {
@@ -132,4 +158,39 @@ export interface MCQResult {
   total: number
   correct: number
   question_results: MCQQuestionResult[]
+}
+
+// --- Voice assessment ---
+
+export interface VoiceSessionOut {
+  id: string
+  test_request_id: string
+  status: 'pending' | 'in_progress' | 'completed'
+  started_at: string | null
+  opening_message: string
+  opening_audio_b64?: string
+}
+
+export interface VoiceTranscriptEntry {
+  id: string
+  speaker: 'ai' | 'engineer'
+  message: string
+  timestamp_ms: number
+  sequence_index: number
+}
+
+export interface VoiceTurnOut {
+  transcription: string
+  ai_response: string
+  ai_audio_b64?: string
+  turn_count: number
+  session_transcript: VoiceTranscriptEntry[]
+}
+
+export interface VoiceScoreOut {
+  communication_score: number
+  ai_feedback: string
+  overall_score: number
+  strengths: string[]
+  improvements: string[]
 }

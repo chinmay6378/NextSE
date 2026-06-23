@@ -19,6 +19,15 @@ async def list_users(db: DbSession, role: Role | None = None) -> list[Profile]:
     return list(result.scalars().all())
 
 
+@router.get("/{profile_id}", response_model=ProfileOut)
+async def get_user(profile_id: uuid.UUID, db: DbSession) -> Profile:
+    profile = await db.get(Profile, profile_id)
+    if profile is None:
+        from fastapi import HTTPException, status
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+    return profile
+
+
 @router.patch("/{profile_id}/role", response_model=ProfileOut)
 async def update_role(profile_id: uuid.UUID, payload: RoleUpdateRequest, db: DbSession) -> Profile:
     profile = await db.get(Profile, profile_id)

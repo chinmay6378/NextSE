@@ -21,7 +21,13 @@ router = APIRouter(prefix="/clients", tags=["clients"])
 
 @router.post("", response_model=ClientOut, status_code=status.HTTP_201_CREATED)
 async def create_client(payload: ClientCreate, db: DbSession, profile: AdminProfile) -> Client:
-    client = Client(name=payload.name, industry=payload.industry, created_by=profile.id)
+    client = Client(
+        name=payload.name,
+        industry=payload.industry,
+        target_industries=payload.target_industries,
+        target_locations=payload.target_locations,
+        created_by=profile.id,
+    )
     db.add(client)
     await db.commit()
     await db.refresh(client)

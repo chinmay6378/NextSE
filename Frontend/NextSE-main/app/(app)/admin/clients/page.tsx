@@ -9,8 +9,8 @@ import { listClients } from '@/lib/api/clients'
 import { cn } from '@/lib/utils'
 
 const statusStyles: Record<string, string> = {
-  draft: 'bg-muted text-muted-foreground',
-  published: 'bg-emerald-500/15 text-emerald-400',
+  draft:     'bg-slate-100 text-slate-600',
+  published: 'bg-emerald-50 text-emerald-700',
 }
 
 export default function AdminClientsPage() {

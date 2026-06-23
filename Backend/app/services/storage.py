@@ -43,3 +43,18 @@ async def delete_file(storage_path: str) -> None:
         get_supabase_admin().storage.from_(settings.supabase_storage_bucket).remove([storage_path])
 
     await asyncio.to_thread(_delete)
+
+
+async def create_signed_url(storage_path: str, expires_in: int = 3600) -> str:
+    def _sign() -> str:
+        result = get_supabase_admin().storage.from_(settings.supabase_storage_bucket).create_signed_url(
+            storage_path, expires_in
+        )
+        # supabase-py v2 returns an object with .signed_url
+        if hasattr(result, "signed_url"):
+            return result.signed_url or ""
+        if isinstance(result, dict):
+            return result.get("signedURL") or result.get("signed_url") or ""
+        return ""
+
+    return await asyncio.to_thread(_sign)
