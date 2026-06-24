@@ -101,6 +101,7 @@ class MCQAttempt(Base):
     answers: Mapped[list] = mapped_column(JSONB, nullable=False)
     score_percent: Mapped[float] = mapped_column(Numeric, nullable=False)
     passed: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    level: Mapped[int] = mapped_column(Integer, nullable=False, server_default="1")
     started_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     completed_at = created_at_col()
 

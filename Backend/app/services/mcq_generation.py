@@ -1,5 +1,6 @@
 """Lazy MCQ-set generation: returns a cached set if one exists for the client,
-otherwise calls OpenAI structured output to generate 10 questions and persists them."""
+otherwise calls OpenAI structured output to generate 30 questions (10 per level)
+and persists them."""
 
 import uuid
 
@@ -10,6 +11,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.crud import get_latest_version
 from app.models import MCQQuestion, MCQSet, StudyMaterial
 from app.services.openai_client import GenerationFailedError, generate_structured
+
+MIN_QUESTIONS_PER_LEVEL = 8  # regenerate if any level has fewer than this
 
 
 class _MCQQuestionGenerated(BaseModel):
@@ -28,30 +31,49 @@ class _MCQGenerated(BaseModel):
     questions: list[_MCQQuestionGenerated]
 
 
+async def _has_enough_questions(db: AsyncSession, mcq_set_id: uuid.UUID) -> bool:
+    """Check that the MCQ set has at least MIN_QUESTIONS_PER_LEVEL questions per difficulty."""
+    for difficulty in ("easy", "medium", "hard"):
+        count = await db.scalar(
+            select(func.count(MCQQuestion.id)).where(
+                MCQQuestion.mcq_set_id == mcq_set_id,
+                MCQQuestion.difficulty == difficulty,
+            )
+        )
+        if (count or 0) < MIN_QUESTIONS_PER_LEVEL:
+            return False
+    return True
+
+
 async def get_or_generate_mcq_set(db: AsyncSession, client_id: uuid.UUID) -> MCQSet:
-    """Return the latest cached MCQ set, or generate and persist a new one."""
+    """Return the latest cached MCQ set (if it has enough questions per level),
+    or generate and persist a new 30-question set (10 easy / 10 medium / 10 hard)."""
     cached = await db.execute(
         select(MCQSet).where(MCQSet.client_id == client_id).order_by(MCQSet.version.desc()).limit(1)
     )
     mcq_set = cached.scalars().first()
-    if mcq_set is not None:
+    if mcq_set is not None and await _has_enough_questions(db, mcq_set.id):
         return mcq_set
 
     context = await _build_context(db, client_id)
 
     system_prompt = (
-        "You are an expert sales trainer creating an assessment for sales engineers. "
-        "Generate exactly 10 multiple-choice questions that test deep knowledge of the client. "
+        "You are an expert sales trainer creating a tiered MCQ assessment for sales engineers. "
+        "Generate exactly 30 multiple-choice questions split across 3 difficulty levels: "
+        "10 easy (L1), 10 medium (L2), and 10 hard (L3). "
         "Each question must have exactly 4 answer options. "
         "correct_option_index is 0-based (0, 1, 2, or 3). "
-        "difficulty must be exactly one of: easy, medium, hard. "
-        "Mix difficulty: 3 easy, 4 medium, 3 hard. "
+        "difficulty must be exactly one of: easy, medium, hard — use 'easy' for 10 questions, "
+        "'medium' for 10 questions, and 'hard' for 10 questions. "
+        "L1 easy: Basic product/company facts an engineer should know after a quick read. "
+        "L2 medium: Application, specification, and customer-matching questions requiring deeper understanding. "
+        "L3 hard: Complex scenario-based, competitive differentiation, and objection-handling questions. "
         "Every question must be grounded in the provided study material."
     )
     user_prompt = (
         f"Client study material:\n\n"
         f"{context or 'No material available — generate general B2B sales knowledge questions.'}"
-        f"\n\nGenerate 10 MCQ questions."
+        f"\n\nGenerate 30 MCQ questions: 10 easy, 10 medium, 10 hard."
     )
 
     generated = await generate_structured(

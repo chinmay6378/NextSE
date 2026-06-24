@@ -142,6 +142,7 @@ export interface MCQQuestion {
 export interface MCQStartData {
   mcq_set_id: string
   questions: MCQQuestion[]
+  level: number
 }
 
 export interface MCQQuestionResult {
@@ -158,6 +159,7 @@ export interface MCQResult {
   total: number
   correct: number
   question_results: MCQQuestionResult[]
+  level: number
 }
 
 // --- Voice assessment ---

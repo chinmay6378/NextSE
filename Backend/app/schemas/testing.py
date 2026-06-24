@@ -33,6 +33,7 @@ class MCQQuestionOut(BaseModel):
 class MCQStartOut(BaseModel):
     mcq_set_id: uuid.UUID
     questions: list[MCQQuestionOut]
+    level: int = 1
 
 
 class MCQAnswerIn(BaseModel):
@@ -58,3 +59,4 @@ class MCQResultOut(BaseModel):
     total: int
     correct: int
     question_results: list[MCQQuestionResult]
+    level: int = 1

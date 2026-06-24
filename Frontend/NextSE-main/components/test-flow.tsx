@@ -71,6 +71,7 @@ export function TestFlow() {
   const [answers, setAnswers] = useState<Record<string, number>>({})
   const [result, setResult] = useState<MCQResult | null>(null)
   const [startError, setStartError] = useState<string | null>(null)
+  const [currentLevel, setCurrentLevel] = useState<number>(1)
 
   // Proctoring state
   const [examStarted, setExamStarted] = useState(false)
@@ -116,6 +117,7 @@ export function TestFlow() {
     mutationFn: (requestId: string) => startTest(requestId),
     onSuccess: (data) => {
       setQuestions(data.questions)
+      setCurrentLevel(data.level)
       setAnswers({})
       setCurrentQ(0)
       setStartError(null)
@@ -462,7 +464,7 @@ export function TestFlow() {
                 <div>
                   <p className="text-foreground font-semibold">Generating questions…</p>
                   <p className="text-muted-foreground text-sm mt-1">
-                    Building adaptive MCQ for {activeRequest?.client_name}
+                    Building L{currentLevel} MCQ for {activeRequest?.client_name}
                   </p>
                 </div>
               </div>
@@ -483,7 +485,7 @@ export function TestFlow() {
                   </div>
                   <div>
                     <p className="text-white font-bold text-lg">Secure Exam Environment</p>
-                    <p className="text-gray-400 text-sm mt-0.5">{activeRequest?.client_name} · MCQ Assessment</p>
+                    <p className="text-gray-400 text-sm mt-0.5">{activeRequest?.client_name} · L{currentLevel} MCQ Assessment</p>
                   </div>
                 </div>
 
@@ -548,7 +550,7 @@ export function TestFlow() {
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
                     <div>
-                      <h2 className="text-xl font-bold text-foreground">MCQ Assessment</h2>
+                      <h2 className="text-xl font-bold text-foreground">L{currentLevel} MCQ Assessment</h2>
                       <p className="text-sm text-muted-foreground mt-0.5">{activeRequest?.client_name}</p>
                     </div>
                     <div className="flex items-center gap-3">
@@ -727,7 +729,7 @@ export function TestFlow() {
                     : 'bg-red-50 text-red-600 border border-red-200'
                 }`}
               >
-                {result.passed ? '✓ Stage 1 Passed (≥70%)' : '✗ Did not pass (<70%)'}
+                {result.passed ? `✓ L${result.level} Passed (≥70%)` : `✗ L${result.level} Failed (<70%)`}
               </div>
 
               {result.passed && (

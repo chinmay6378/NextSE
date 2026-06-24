@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, HTTPException, status
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.deps import AdminProfile, DbSession, EngineerProfile
@@ -201,6 +201,19 @@ async def start_test(request_id: uuid.UUID, db: DbSession, profile: EngineerProf
 
     questions = await _load_questions(db, mcq_set.id)
 
+    # Determine level based on how many attempts engineer has already completed for this client
+    attempt_count = await db.scalar(
+        select(func.count(MCQAttempt.id))
+        .join(TestRequest, MCQAttempt.test_request_id == TestRequest.id)
+        .where(
+            MCQAttempt.engineer_id == profile.id,
+            TestRequest.client_id == req.client_id,
+        )
+    )
+    level = min((attempt_count or 0) + 1, 3)
+    difficulty_map = {1: "easy", 2: "medium", 3: "hard"}
+    level_questions = [q for q in questions if q.difficulty == difficulty_map[level]]
+
     if req.status == "approved":
         req.status = "in_progress"
         req.responded_at = datetime.now(timezone.utc)
@@ -208,6 +221,7 @@ async def start_test(request_id: uuid.UUID, db: DbSession, profile: EngineerProf
 
     return MCQStartOut(
         mcq_set_id=mcq_set.id,
+        level=level,
         questions=[
             MCQQuestionOut(
                 id=q.id,
@@ -215,7 +229,7 @@ async def start_test(request_id: uuid.UUID, db: DbSession, profile: EngineerProf
                 options=q.options,
                 difficulty=q.difficulty,
             )
-            for q in questions
+            for q in level_questions
         ],
     )
 
@@ -257,11 +271,27 @@ async def submit_mcq(
     questions = await _load_questions(db, mcq_set.id)
     question_map: dict[uuid.UUID, MCQQuestion] = {q.id: q for q in questions}
 
+    # Determine level (same logic as start_test — count completed attempts before this one)
+    attempt_count = await db.scalar(
+        select(func.count(MCQAttempt.id))
+        .join(TestRequest, MCQAttempt.test_request_id == TestRequest.id)
+        .where(
+            MCQAttempt.engineer_id == profile.id,
+            TestRequest.client_id == req.client_id,
+        )
+    )
+    level = min((attempt_count or 0) + 1, 3)
+    difficulty_map = {1: "easy", 2: "medium", 3: "hard"}
+    level_question_map = {
+        q_id: q for q_id, q in question_map.items()
+        if q.difficulty == difficulty_map[level]
+    }
+
     answer_map: dict[uuid.UUID, int] = {a.question_id: a.selected_option_index for a in payload.answers}
 
     question_results: list[MCQQuestionResult] = []
     correct_count = 0
-    for q_id, q in question_map.items():
+    for q_id, q in level_question_map.items():
         selected = answer_map.get(q_id, -1)
         is_correct = selected == q.correct_option_index
         if is_correct:
@@ -276,7 +306,7 @@ async def submit_mcq(
             )
         )
 
-    total = len(question_map)
+    total = len(level_question_map)
     score_percent = round(100 * correct_count / max(total, 1), 2)
     passed = score_percent >= 70.0
 
@@ -293,6 +323,7 @@ async def submit_mcq(
             answers=answers_json,
             score_percent=score_percent,
             passed=passed,
+            level=level,
             started_at=now,
         )
     )
@@ -322,4 +353,5 @@ async def submit_mcq(
         total=total,
         correct=correct_count,
         question_results=question_results,
+        level=level,
     )
