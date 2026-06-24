@@ -406,33 +406,19 @@ def _objection_bullets(items: list[ObjectionNote]) -> str:
 
 
 def _profile_to_markdown(p: GeneratedClientProfile) -> str:
-    def show(content: str) -> bool:
-        """Return True only if content has real data (not empty or a 'not available' placeholder)."""
-        return bool(content) and "not available in documents" not in content.lower()
-
-    products_block = "\n\n---\n\n".join(item.strip() for item in p.products_services)
-    industries_block = "\n\n".join(item.strip() for item in p.industries_served)
-    certifications_block = _bullets(p.certifications) if p.certifications else ""
-    customers_block = _bullets(p.major_customers) if p.major_customers else ""
-    competitors_block = _bullets(p.competitors)
-
-    candidates = [
-        ("## Company Overview", p.company_overview),
-        ("## History and Background", p.history_background),
-        ("## Vision and Mission", p.vision_mission),
-        ("## Products & Services", products_block),
-        ("## Industries Served", industries_block),
-        ("## Manufacturing Facilities", p.manufacturing_facilities),
-        ("## Certifications", certifications_block),
-        ("## Major Customers", customers_block),
-        ("## Market Presence", p.market_presence),
-        ("## Competitors", competitors_block),
-        ("## Key Differentiators", _bullets(p.key_differentiators)),
-        ("## SWOT Analysis", p.swot_analysis),
-        ("## Future Growth Opportunities", p.future_growth),
-        ("## Additional Notes", p.additional_notes),
+    sections = [
+        ("## 1. Product Clarity", p.product_clarity),
+        ("## 2. Best-Fit ICP", p.best_fit_icp),
+        ("## 3. Buyer Problems and Triggers", p.buyer_problems_triggers),
+        ("## 4. Feature-to-Value Conversion", p.feature_to_value),
+        ("## 5. Stakeholder Messaging", p.stakeholder_messaging),
+        ("## 6. Discovery Questions", _bullets(p.discovery_questions)),
+        ("## 7. Sales Pitch Scripts", p.sales_pitch_scripts),
+        ("## 8. Objection Handling", p.objection_handling),
+        ("## 9. Lead Qualification Score", p.lead_qualification_score),
+        ("## 10. Call Execution Notes", p.call_execution_notes),
     ]
-    return "\n\n".join(f"{heading}\n{content}" for heading, content in candidates if show(content))
+    return "\n\n".join(f"{heading}\n{content}" for heading, content in sections if content)
 
 
 def _study_material_to_markdown(m: GeneratedStudyMaterial) -> str:

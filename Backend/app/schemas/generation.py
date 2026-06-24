@@ -23,20 +23,16 @@ class ObjectionNote(BaseModel):
 class GeneratedClientProfile(BaseModel):
     model_config = _STRICT
 
-    company_overview: str = Field(description="What the company makes/trades, who their customers are, core problem they solve, key product categories — as described in documents only. No general knowledge.")
-    history_background: str = Field(description="Founding year, growth milestones, key events — exactly as stated in documents. Write 'Not Available in Documents' if absent.")
-    vision_mission: str = Field(description="Exact vision and mission statements and company values as written in documents. Write 'Not Available in Documents' if not explicitly stated.")
-    products_services: list[str] = Field(description="ONE item per product or product family. Each item is a markdown block: **Product Name** on first line, then ALL specs (sizes, pressure ratings, temperature range, materials, end connections, standards), ALL variants/models, ALL applications for that product — exactly as in documents. Do NOT merge products. Do NOT skip any product. Do NOT abbreviate specs.")
-    industries_served: list[str] = Field(description="ONE item per industry/sector. Format: 'Industry Name: [specific use case and application context exactly as described in documents]'. List ALL industries mentioned anywhere in documents.")
-    manufacturing_facilities: str = Field(description="Every plant location, capacity, technology, production line, and manufacturing capability from documents. 'Not Available in Documents' if absent.")
-    certifications: list[str] = Field(description="Every certification code, standard number, test report, and accreditation mentioned anywhere in documents (e.g. ISO 9001:2015, API 600, ASME B16.34). Return empty list only if truly none exist.")
-    major_customers: list[str] = Field(description="Every customer name, client reference, project name, or testimonial explicitly mentioned in documents. Return empty list only if truly none appear.")
-    market_presence: str = Field(description="All export countries, office locations, distributor networks, and geographic reach from documents — list actual country/city names, not vague phrases.")
-    competitors: list[str] = Field(description="Only competitors explicitly named in documents. Use ['Not Available in Documents'] if none are named.")
-    key_differentiators: list[str] = Field(description="Specific, verifiable USPs from documents — e.g. 'API 600 certified, 100% hydro-tested at 1.5x rated pressure' not 'high quality'. Each item must cite a concrete claim from documents.")
-    swot_analysis: str = Field(description="Markdown SWOT analysis derived only from document facts. Each quadrant: minimum 3 points. Label inferences as '(inferred from documents)'.")
-    future_growth: str = Field(description="Expansion plans, new product launches, new markets explicitly mentioned in documents. Write 'Not Available in Documents' if absent.")
-    additional_notes: str = Field(description="Capture ALL other structured content from documents that does not fit the above sections: FAQs, qualification questions, sales scripts, delivery terms, warranty info, payment terms, ordering process, company policies, contact info, etc. Format as organized markdown with sub-headings for each topic found. Write 'Not Available in Documents' if truly nothing else remains.")
+    product_clarity: str = Field(description="One-line explanation, simple buyer explanation, technical buyer explanation, main problem solved, and why customers may consider switching from current solution.")
+    best_fit_icp: str = Field(description="Markdown table with columns: Industry | Company Type | Department/Person to Approach | Use Case | Reason to Target | Priority (High/Medium/Low). Also include a section on who NOT to target.")
+    buyer_problems_triggers: str = Field(description="List of technical problems, commercial/business problems, and buying triggers such as new project, vendor issue, breakdown, expansion, quality issue, compliance, replacement, maintenance shutdown, cost reduction.")
+    feature_to_value: str = Field(description="Markdown table with columns: Feature/Fact from Document | Technical Meaning | Business Value | Buyer Who Cares | How to Explain It | Proof Available / Proof Missing.")
+    stakeholder_messaging: str = Field(description="For each buyer type (Owner/Director, Plant/Production, Maintenance, Quality, Project/Engineering, Purchase, Consultant/EPC): what they care about, what to say, what not to say, best question to ask.")
+    discovery_questions: list[str] = Field(description="Exactly 12 strong discovery questions covering: current process/vendor, application, pain/problem, impact of problem, technical requirement, purchase process, decision-maker, timeline, success criteria, reason to change. No weak questions like 'Do you have requirement?'")
+    sales_pitch_scripts: str = Field(description="Four pitch scripts: A) 30-second cold call pitch, B) First meeting pitch, C) Technical buyer pitch, D) Purchase buyer pitch. Each includes: Opening, Relevance, Problem, Product Value, Discovery Question, Next Step.")
+    objection_handling: str = Field(description="For each objection (Send details, Already have vendor, No requirement now, Price is high, Not interested, Talk to purchase, Share profile, Call later, We need lowest price, We only work with approved vendors): what prospect may actually mean, best response, follow-up question, next step. Use calm consultative language and tactical empathy.")
+    lead_qualification_score: str = Field(description="Scoring framework out of 100: Industry fit (20), Application fit (20), Problem/need (20), Decision-maker access (15), Timeline/urgency (15), Commercial seriousness (10). Classification: Hot / Warm / Nurture / Not relevant.")
+    call_execution_notes: str = Field(description="5 things sales engineer must remember, 5 mistakes to avoid, 5 details to capture in CRM, 5 missing inputs to ask the client.")
 
 
 class StudyModule(BaseModel):
