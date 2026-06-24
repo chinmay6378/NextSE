@@ -21,8 +21,11 @@ class Settings(BaseSettings):
     openai_text_model: str = "gpt-4o"
     openai_realtime_model: str = "gpt-4o-realtime-preview"
 
-    # Groq (STT + LLM)
+    # Groq (LLM)
     groq_api_key: str = ""
+
+    # Deepgram (STT)
+    deepgram_api_key: str = ""
 
     # ElevenLabs (TTS)
     elevenlabs_api_key: str = ""

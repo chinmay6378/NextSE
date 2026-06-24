@@ -1,11 +1,11 @@
 """Voice assessment service.
 
-STT  : Groq Whisper (whisper-large-v3-turbo) via direct httpx
+STT  : Deepgram Nova-2 via REST API
 LLM  : Groq llama-3.3-70b-versatile (streaming)
 TTS  : ElevenLabs eleven_flash_v2_5  (ultra-low-latency)
 
 Low-latency pipeline:
-  1. Audio uploaded → Groq Whisper transcribes
+  1. Audio uploaded → Deepgram Nova-2 transcribes
   2. Groq LLM streams tokens; each completed sentence fires a TTS task immediately
   3. ElevenLabs TTS runs in parallel per sentence, passing previous_text so the
      prosody model has context → consistent tone, no seam at sentence boundaries
@@ -26,15 +26,6 @@ _groq = AsyncGroq(api_key=settings.groq_api_key)
 
 OPENING_PROMPT = "Hello? Kaun bol raha hai?"
 _ELEVENLABS_VOICE_ID = "codoBx1vrQVwrVQylqGj"
-
-# Whisper v3 commonly hallucinates these phrases on near-silent audio
-_WHISPER_HALLUCINATIONS = frozenset({
-    "thank you", "thank you.", "thanks", "thanks.",
-    "thank you for watching", "thank you for watching.",
-    "thanks for watching", "thanks for watching.",
-    "you", ".", "..", "...", "okay", "okay.", "ok", "ok.",
-    "bye", "bye.", "goodbye", "goodbye.", "hmm", "hmm.",
-})
 
 
 # ---------------------------------------------------------------------------
@@ -66,72 +57,66 @@ async def synthesize_speech(text: str) -> bytes:
 
 
 # ---------------------------------------------------------------------------
-# STT — Groq Whisper
+# STT — Deepgram Nova-2
 # ---------------------------------------------------------------------------
 
-def _audio_file_tuple(audio_bytes: bytes, hint_mime: str) -> tuple[str, bytes, str]:
-    """Return (filename, bytes, audio_mime) for Whisper multipart upload.
-
-    Python's mimetypes maps .webm → video/webm, which Whisper rejects.
-    We detect the real format from magic bytes and force audio/* MIME types
-    so the SDK sends the right Content-Type header in the multipart.
-    """
-    magic: dict[bytes, tuple[str, str]] = {
-        b"\x1a\x45\xdf\xa3": ("webm", "audio/webm"),  # WebM / Matroska EBML
-        b"OggS":              ("ogg",  "audio/ogg"),
-        b"RIFF":              ("wav",  "audio/wav"),
-        b"fLaC":              ("flac", "audio/flac"),
-        b"ID3\x03":          ("mp3",  "audio/mpeg"),
-        b"ID3\x04":          ("mp3",  "audio/mpeg"),
-        b"\xff\xfb":         ("mp3",  "audio/mpeg"),
-        b"\xff\xf3":         ("mp3",  "audio/mpeg"),
-        b"\xff\xf2":         ("mp3",  "audio/mpeg"),
+def _deepgram_content_type(audio_bytes: bytes, hint_mime: str) -> str:
+    """Detect audio MIME type from magic bytes; fall back to hint."""
+    magic: dict[bytes, str] = {
+        b"\x1a\x45\xdf\xa3": "audio/webm",
+        b"OggS":              "audio/ogg",
+        b"RIFF":              "audio/wav",
+        b"fLaC":              "audio/flac",
+        b"ID3\x03":          "audio/mpeg",
+        b"ID3\x04":          "audio/mpeg",
+        b"\xff\xfb":         "audio/mpeg",
+        b"\xff\xf3":         "audio/mpeg",
+        b"\xff\xf2":         "audio/mpeg",
     }
     prefix = audio_bytes[:4]
-    for sig, (ext, mime) in magic.items():
+    for sig, mime in magic.items():
         if prefix[: len(sig)] == sig:
-            return (f"recording.{ext}", audio_bytes, mime)
-
-    # Fallback: honour the browser-reported MIME, map video/webm → audio/webm
+            return mime
     clean = hint_mime.split(";")[0].strip().replace("video/", "audio/")
-    ext_from_mime = {
-        "audio/webm": "webm", "audio/ogg": "ogg", "audio/mp4": "mp4",
-        "audio/mpeg": "mp3",  "audio/wav": "wav", "audio/x-m4a": "m4a",
-    }.get(clean, "webm")
-    return (f"recording.{ext_from_mime}", audio_bytes, clean or "audio/webm")
+    return clean or "audio/webm"
 
 
 async def transcribe_audio(audio_bytes: bytes, mime_type: str = "audio/webm") -> str:
-    """Transcribe using Groq Whisper via direct httpx (ultra-low-latency STT)."""
+    """Transcribe using Deepgram Nova-2 REST API."""
     if len(audio_bytes) < 1000:
         return ""
 
-    filename, _, audio_mime = _audio_file_tuple(audio_bytes, mime_type)
-    print(f"[STT] {len(audio_bytes)} bytes | magic={audio_bytes[:4].hex()} | mime={audio_mime} | file={filename}", flush=True)
+    content_type = _deepgram_content_type(audio_bytes, mime_type)
+    print(f"[STT] {len(audio_bytes)} bytes | magic={audio_bytes[:4].hex()} | mime={content_type}", flush=True)
 
-    max_retries = 4
-    for attempt in range(max_retries):
-        async with httpx.AsyncClient(timeout=60) as client:
-            r = await client.post(
-                "https://api.groq.com/openai/v1/audio/transcriptions",
-                headers={"Authorization": f"Bearer {settings.groq_api_key}"},
-                files={"file": (filename, audio_bytes, audio_mime)},
-                data={"model": "whisper-large-v3-turbo", "response_format": "text"},
-            )
-        if r.status_code == 429:
-            # Honour Retry-After if present, else back off 3s → 6s → 12s
-            retry_after = float(r.headers.get("retry-after", 3 * (2 ** attempt)))
-            print(f"[STT] 429 rate-limit — retrying in {retry_after}s (attempt {attempt + 1}/{max_retries})", flush=True)
-            await asyncio.sleep(retry_after)
-            continue
-        if r.status_code >= 400:
-            raise ValueError(f"Groq STT {r.status_code}: {r.text[:600]}")
-        text = r.text.strip()
-        if text.lower() in _WHISPER_HALLUCINATIONS or len(text) < 4:
-            return ""
-        return text
+    async with httpx.AsyncClient(timeout=60) as client:
+        r = await client.post(
+            "https://api.deepgram.com/v1/listen",
+            params={
+                "model": "nova-2",
+                "smart_format": "true",
+                "punctuate": "true",
+                "language": "en",
+            },
+            headers={
+                "Authorization": f"Token {settings.deepgram_api_key}",
+                "Content-Type": content_type,
+            },
+            content=audio_bytes,
+        )
 
-    raise ValueError("Groq STT rate-limit: all retries exhausted")
+    if r.status_code >= 400:
+        raise ValueError(f"Deepgram STT {r.status_code}: {r.text[:600]}")
+
+    data = r.json()
+    try:
+        transcript = data["results"]["channels"][0]["alternatives"][0]["transcript"].strip()
+    except (KeyError, IndexError):
+        return ""
+
+    if len(transcript) < 4:
+        return ""
+    return transcript
 
 
 # ---------------------------------------------------------------------------
