@@ -114,7 +114,24 @@ Create 12 strong questions before pitching:
 
 Avoid weak questions like "Do you have requirement?"
 
-7. Objection Handling
+7. Sales Pitch Scripts
+Create:
+A. 30-second cold call pitch
+B. First meeting pitch
+C. Technical buyer pitch
+D. Purchase buyer pitch
+
+Each must include:
+- Opening
+- Relevance
+- Problem
+- Product value
+- Discovery question
+- Next step
+
+Keep scripts natural, short, and practical.
+
+8. Objection Handling
 Handle:
 - Send details
 - Already have vendor
@@ -139,7 +156,7 @@ Use calm consultative language. Use tactical empathy where useful:
 "How are you currently handling this?"
 "What would need to be true for you to consider another supplier?"
 
-8. Lead Qualification Score
+9. Lead Qualification Score
 Score out of 100:
 - Industry fit: 20
 - Application fit: 20
@@ -154,7 +171,7 @@ Classify:
 - Nurture
 - Not relevant
 
-9. Call Execution Notes
+10. Call Execution Notes
 Give:
 - 5 things sales engineer must remember
 - 5 mistakes to avoid
@@ -396,9 +413,10 @@ def _profile_to_markdown(p: GeneratedClientProfile) -> str:
         ("## 4. Feature-to-Value Conversion", p.feature_to_value),
         ("## 5. Stakeholder Messaging", p.stakeholder_messaging),
         ("## 6. Discovery Questions", _bullets(p.discovery_questions)),
-        ("## 7. Objection Handling", p.objection_handling),
-        ("## 8. Lead Qualification Score", p.lead_qualification_score),
-        ("## 9. Call Execution Notes", p.call_execution_notes),
+        ("## 7. Sales Pitch Scripts", p.sales_pitch_scripts),
+        ("## 8. Objection Handling", p.objection_handling),
+        ("## 9. Lead Qualification Score", p.lead_qualification_score),
+        ("## 10. Call Execution Notes", p.call_execution_notes),
     ]
     return "\n\n".join(f"{heading}\n{content}" for heading, content in sections if content)
 
