@@ -31,19 +31,19 @@ export const metadata: Metadata = {
     siteName: 'NextSE',
     images: [
       {
-        url: 'https://nextse.b2botix.ai/apple-icon.png',
-        width: 180,
-        height: 180,
-        alt: 'NextSE Logo',
+        url: 'https://nextse.b2botix.ai/image.png',
+        width: 1200,
+        height: 630,
+        alt: 'NextSE Dashboard',
       },
     ],
     type: 'website',
   },
   twitter: {
-    card: 'summary',
+    card: 'summary_large_image',
     title: 'NextSE',
     description: 'AI-powered Sales Engineering training — study smarter, assess faster, pitch with confidence.',
-    images: ['https://nextse.b2botix.ai/apple-icon.png'],
+    images: ['https://nextse.b2botix.ai/image.png'],
   },
 }
 
