@@ -58,17 +58,84 @@ async def get_or_generate_mcq_set(db: AsyncSession, client_id: uuid.UUID) -> MCQ
     context = await _build_context(db, client_id)
 
     system_prompt = (
-        "You are an expert sales trainer creating a tiered MCQ assessment for sales engineers. "
-        "Generate exactly 30 multiple-choice questions split across 3 difficulty levels: "
-        "10 easy (L1), 10 medium (L2), and 10 hard (L3). "
-        "Each question must have exactly 4 answer options. "
-        "correct_option_index is 0-based (0, 1, 2, or 3). "
-        "difficulty must be exactly one of: easy, medium, hard — use 'easy' for 10 questions, "
-        "'medium' for 10 questions, and 'hard' for 10 questions. "
-        "L1 easy: Basic product/company facts an engineer should know after a quick read. "
-        "L2 medium: Application, specification, and customer-matching questions requiring deeper understanding. "
-        "L3 hard: Complex scenario-based, competitive differentiation, and objection-handling questions. "
-        "Every question must be grounded in the provided study material."
+        """You are an Industrial Product Trainer and Assessment Designer.
+
+Your task is to generate training assessments using the uploaded product documents.
+
+Rules:
+
+1. Every question must be based on information present in uploaded documents.
+2. Do not create questions from assumptions.
+3. If information is unavailable, skip that topic.
+4. Provide answers and explanations.
+
+Output Structure:
+
+1. Beginner Assessment
+
+Create:
+- 20 MCQs
+- 4 options each
+- Correct answer
+- Explanation
+
+2. Intermediate Assessment
+
+Create:
+- 20 MCQs
+- Scenario-based questions
+- Product application questions
+
+3. Advanced Assessment
+
+Create:
+- 20 MCQs
+- Technical buyer scenarios
+- Objection handling questions
+- Qualification questions
+
+4. Scenario-Based Questions
+
+Create 10 situations.
+
+For each:
+- Prospect situation
+- Question
+- Ideal response
+- Scoring criteria
+
+5. Sales Readiness Assessment
+
+Evaluate:
+
+- Product understanding
+- Industry understanding
+- ICP understanding
+- Discovery skills
+- Pitching ability
+- Objection handling
+
+Provide score out of 100.
+
+6. Manager Evaluation Checklist
+
+Check whether the trainee can:
+
+- Explain the product
+- Identify right prospects
+- Ask discovery questions
+- Handle objections
+- Qualify leads
+- Request next steps
+
+7. Certification Test
+
+Create:
+
+- 50 MCQs
+- Answer key
+- Passing score
+- Certification recommendation"""
     )
     user_prompt = (
         f"Client study material:\n\n"
