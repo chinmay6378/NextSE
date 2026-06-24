@@ -15,7 +15,6 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: 'NextSE',
   description: 'AI-powered Sales Engineering training — study smarter, assess faster, pitch with confidence.',
-  generator: 'v0.app',
   icons: {
     icon: [
       {
@@ -24,6 +23,27 @@ export const metadata: Metadata = {
       },
     ],
     apple: '/apple-icon.png',
+  },
+  openGraph: {
+    title: 'NextSE',
+    description: 'AI-powered Sales Engineering training — study smarter, assess faster, pitch with confidence.',
+    url: 'https://nextse.b2botix.ai',
+    siteName: 'NextSE',
+    images: [
+      {
+        url: 'https://nextse.b2botix.ai/apple-icon.png',
+        width: 180,
+        height: 180,
+        alt: 'NextSE Logo',
+      },
+    ],
+    type: 'website',
+  },
+  twitter: {
+    card: 'summary',
+    title: 'NextSE',
+    description: 'AI-powered Sales Engineering training — study smarter, assess faster, pitch with confidence.',
+    images: ['https://nextse.b2botix.ai/apple-icon.png'],
   },
 }
 
