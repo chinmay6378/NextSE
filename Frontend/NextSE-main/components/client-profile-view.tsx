@@ -200,34 +200,37 @@ function BuyerCommitteeTree() {
 
 function SalesFunnel() {
   const stages = [
-    { label: 'Lead Sources',           pct: 100, bg: 'bg-teal-700',   text: 'text-white' },
-    { label: 'First Contact',          pct: 84,  bg: 'bg-teal-600',   text: 'text-white' },
-    { label: 'Technical Discussion',   pct: 68,  bg: 'bg-teal-500',   text: 'text-white' },
-    { label: 'Commercial Negotiation', pct: 52,  bg: 'bg-teal-400',   text: 'text-white' },
-    { label: 'PO Closure',            pct: 38,  bg: 'bg-teal-300',   text: 'text-teal-950' },
-    { label: 'Repeat Order',          pct: 26,  bg: 'bg-teal-200',   text: 'text-teal-950' },
+    { label: 'Lead Sources',           pct: 100 },
+    { label: 'First Contact',          pct: 84  },
+    { label: 'Technical Discussion',   pct: 68  },
+    { label: 'Commercial Negotiation', pct: 52  },
+    { label: 'PO Closure',            pct: 38  },
+    { label: 'Repeat Order',          pct: 26  },
   ]
 
   return (
-    <div className="rounded-xl border border-teal-500/20 bg-teal-500/8 p-4 mb-5">
-      <p className="text-[10px] font-bold uppercase tracking-widest text-teal-500 mb-4">
+    <div className="rounded-xl border border-teal-600/30 bg-teal-950/30 p-4 mb-5">
+      <p className="text-[10px] font-bold uppercase tracking-widest text-teal-400 mb-4">
         Sales Pipeline Stages
       </p>
-      <div className="flex flex-col items-center gap-1">
+      <div className="space-y-2">
         {stages.map((stage, i) => (
-          <div
-            key={i}
-            style={{ width: `${stage.pct}%` }}
-            className={cn(
-              'flex items-center justify-center rounded-lg py-1.5 px-2 text-[11px] font-semibold transition-all',
-              stage.bg, stage.text
-            )}
-          >
-            {stage.label}
+          <div key={i} className="flex items-center gap-3">
+            <span className="text-[10px] font-semibold text-teal-200 w-44 shrink-0 text-right leading-tight">
+              {stage.label}
+            </span>
+            <div className="flex-1 bg-teal-950/60 rounded-full h-6 overflow-hidden">
+              <div
+                className="h-full bg-gradient-to-r from-teal-600 to-teal-400 rounded-full flex items-center justify-end pr-2.5"
+                style={{ width: `${stage.pct}%` }}
+              >
+                <span className="text-[10px] font-bold text-white">{stage.pct}%</span>
+              </div>
+            </div>
           </div>
         ))}
       </div>
-      <p className="text-[10px] text-muted-foreground/50 text-center mt-3">
+      <p className="text-[10px] text-teal-400/40 text-center mt-3">
         Refer to content below for exact drop-off reasons
       </p>
     </div>
