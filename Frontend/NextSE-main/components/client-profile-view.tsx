@@ -415,13 +415,30 @@ const SECTION_KEYS = [
 
 function parseProfileMarkdown(markdown: string): Record<string, string> {
   const result: Record<string, string> = {}
-  const parts = markdown.split(/(?=^## Section \d+)/m)
-  for (const part of parts) {
-    const match = part.match(/^## Section (\d+)\s*[—–-]\s*.+\n([\s\S]*)/)
-    if (!match) continue
-    const key = SECTION_KEYS[parseInt(match[1]) - 1]
-    if (key && match[2].trim()) result[key] = match[2].trim()
+  // Normalize line endings
+  const lines = markdown.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n')
+  let currentKey: string | null = null
+  const buf: string[] = []
+
+  const flush = () => {
+    if (currentKey) {
+      const content = buf.join('\n').trim()
+      if (content) result[currentKey] = content
+    }
+    buf.length = 0
   }
+
+  for (const line of lines) {
+    // Match "## Section N" regardless of what follows (handles any dash style or no dash)
+    const m = line.match(/^##\s+Section\s+(\d+)/)
+    if (m) {
+      flush()
+      currentKey = SECTION_KEYS[parseInt(m[1]) - 1] ?? null
+    } else if (currentKey !== null) {
+      buf.push(line)
+    }
+  }
+  flush()
   return result
 }
 
