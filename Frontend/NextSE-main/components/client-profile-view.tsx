@@ -200,12 +200,12 @@ function BuyerCommitteeTree() {
 
 function SalesFunnel() {
   const stages = [
-    { label: 'Lead Sources', pct: 100, color: 'bg-cyan-500/40 text-cyan-200' },
-    { label: 'First Contact', pct: 84, color: 'bg-cyan-500/35 text-cyan-200' },
-    { label: 'Technical Discussion', pct: 68, color: 'bg-cyan-500/28 text-cyan-200' },
-    { label: 'Commercial Negotiation', pct: 52, color: 'bg-cyan-500/22 text-cyan-200' },
-    { label: 'PO Closure', pct: 38, color: 'bg-cyan-500/16 text-cyan-100' },
-    { label: 'Repeat Order', pct: 26, color: 'bg-cyan-500/10 text-cyan-100' },
+    { label: 'Lead Sources',           pct: 100, bg: 'bg-cyan-700',   text: 'text-white' },
+    { label: 'First Contact',          pct: 84,  bg: 'bg-cyan-600',   text: 'text-white' },
+    { label: 'Technical Discussion',   pct: 68,  bg: 'bg-cyan-500',   text: 'text-white' },
+    { label: 'Commercial Negotiation', pct: 52,  bg: 'bg-cyan-400',   text: 'text-white' },
+    { label: 'PO Closure',            pct: 38,  bg: 'bg-cyan-300',   text: 'text-cyan-950' },
+    { label: 'Repeat Order',          pct: 26,  bg: 'bg-cyan-200',   text: 'text-cyan-950' },
   ]
 
   return (
@@ -219,8 +219,8 @@ function SalesFunnel() {
             key={i}
             style={{ width: `${stage.pct}%` }}
             className={cn(
-              'flex items-center justify-center rounded-lg py-1.5 px-2 text-[11px] font-medium transition-all',
-              stage.color
+              'flex items-center justify-center rounded-lg py-1.5 px-2 text-[11px] font-semibold transition-all',
+              stage.bg, stage.text
             )}
           >
             {stage.label}
