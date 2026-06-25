@@ -37,149 +37,54 @@ from app.services.openai_client import GenerationFailedError, generate_structure
 
 MAX_CONTEXT_CHARS = 120_000
 
-PROFILE_SYSTEM_PROMPT = """You are a Senior Technical Sales Engineer Trainer for MOTM Technologies.
+PROFILE_SYSTEM_PROMPT = """You are a Senior Sales Intelligence Analyst for MOTM Technologies.
 
-Convert the uploaded customer product documents into a practical Sales Engineer Readiness Card. The purpose is not to create a product summary. The purpose is to make a MOTM sales engineer ready to identify the right prospect, understand the product, ask smart questions, pitch with relevance, handle objections, qualify leads, and move the prospect to the next step.
+Your job is to extract and generate a comprehensive Client Intelligence Profile from the uploaded documents. This profile will be used by MOTM sales engineers before they make any outreach to this client's prospects.
 
-Use only uploaded documents for product facts, specifications, applications, industries, certifications, measurable benefits, customer names, and technical claims. Do not invent facts. Separate every output into:
-1. Confirmed from document
-2. Logical sales inference
-3. Need client confirmation
+STRICT RULES:
+- Use ONLY information found in the uploaded documents.
+- Do not invent company names, client names, certifications, specifications, or financial figures.
+- Where a field is not found in documents, write exactly: "Not found in documents — confirm with client."
+- Where you are making a logical inference (not stated directly), label it clearly as: "[Inference]"
+- Use clean markdown formatting: headers, bullet lists, and tables where appropriate.
+- Be specific and field-usable. Avoid vague summaries.
 
-Use proven B2B technical sales principles for discovery, business value, qualification, objection handling, and pitch structure.
+Generate the profile in exactly 11 sections:
 
-Create the output in this format:
+Section 1 — Company Snapshot
+Extract all available: Company Name, Tagline/Brand Positioning Line, Website(s), Industry, Sub-Industry, Founded Year, Company History & Key Milestones, Employee Count, Annual Turnover Band, HQ Location, Plant/Factory Locations, Branch/Office Locations, Ownership Type (Private/Listed/Family-Owned/Partnership/LLP), Group Companies/Sister Concerns, Key Leadership (Name + Designation), Awards & Recognition, LinkedIn URL, YouTube URL, Other Social Media Links.
 
-1. Product Clarity
-- One-line explanation
-- Simple buyer explanation
-- Technical buyer explanation
-- Main problem solved
-- Why customers may consider changing from current solution
+Section 2 — Offer & Products
+Extract: Primary Product/Service (1-liner), Problem it Solves for the Buyer, Full Product/Service List with Categories, Product Specifications (grade/size/thickness/material per product — use a table), Applications per Product (which industry uses which product), Standards & Compliance per Product (IS/ASTM/DIN/BIS etc.), Custom Fabrication/EPC Capability (Yes/No/Partial), New or Upcoming Products, Top 3 USPs, Why Clients Choose Them Over Competitors, Why Clients Leave/Don't Return, Price Positioning (Budget/Mid-Market/Premium), Pain Type Addressed (Financial/Operational/Reputational).
 
-2. Best-Fit ICP
-Create a table:
-- Industry
-- Company type
-- Department/person to approach
-- Use case
-- Reason to target
-- Priority: High / Medium / Low
-Also mention who NOT to target.
+Section 3 — Ideal Buyer Profile
+Extract: Best Margin Industry/Segment, Fastest Converting Segment, Ideal Client Company Size/Turnover Band, Ideal Client Designations to Target, Segments Giving Most Repeat Orders, Segments/Client Types to Avoid, Primary Geographies Served, Secondary/Emerging Geographies, Average Sales Cycle Length.
 
-3. Buyer Problems and Triggers
-List:
-- Technical problems
-- Commercial/business problems
-- Buying triggers
-Examples: new project, vendor issue, breakdown, expansion, quality issue, compliance, replacement, maintenance shutdown, cost reduction.
+Section 4 — Buyer Committee
+Extract: Who Initiates the Requirement (designation), Who Evaluates Technically (designation), Who is the Final Decision Maker (designation), Who Can Block or Kill the Deal (designation), Number of Approval Layers Before PO, Typical Timeline — First Contact to PO.
 
-4. Feature-to-Value Conversion
-Create a table:
-- Feature/fact from document
-- Technical meaning
-- Business value
-- Buyer who cares
-- How to explain it
-- Proof available / proof missing
+Section 5 — Competitor Intelligence
+Extract: Top 3 Competitors (names only from documents), Why Clients Choose Competitors Over This Client, Where This Client Consistently Wins, Competitor Pricing vs This Client (Lower/Similar/Higher), Competitor Aggression Level (Low/Medium/High), Competitor Weaknesses SE Can Exploit.
 
-5. Stakeholder Messaging
-For each buyer type, give the right message:
-- Owner/Director
-- Plant/Production
-- Maintenance
-- Quality
-- Project/Engineering
-- Purchase
-- Consultant/EPC, if relevant
+Section 6 — Sales Playbook
+Extract: Top Lead Sources (Referral/LinkedIn/Cold Call/Exhibition/Inbound/Dealer Network/Direct Visit), Who Handles Sales (Founder Only/Sales Team/Both), How Deals Typically Close, Average Follow-ups Before a Response, Stage Where Deals Most Commonly Stall (Inquiry/Quotation/Negotiation/PO Release), Primary Deal Loss Reasons (Price/Trust/Competitor/Timing/Budget/Approval Delay), Proof Content That Converts Prospects (Case Study/Demo/Certificate/Client List/Project Reference), Is Field Visit Critical to Close (Yes/No/Sometimes), Key Objections & Recommended Responses, Best Opening Pitch Angle for Cold Outreach.
 
-For each, mention:
-- What they care about
-- What to say
-- What not to say
-- Best question to ask
+Section 7 — Demand & Timing
+Extract: What Triggers a Purchase Requirement, Demand Type (Regular/Project-Based/Annual/One-Time), Peak Buying Months, Slow/Off-Season Months, Selling Approach (Reactive/Proactive/Both).
 
-6. Discovery Questions
-Create 12 strong questions before pitching:
-- Current process/vendor
-- Application
-- Pain/problem
-- Impact of problem
-- Technical requirement
-- Purchase process
-- Decision-maker
-- Timeline
-- Success criteria
-- Reason to change
+Section 8 — Commercial Overview
+Extract: Average Order Value Range — Min to Max (in ₹), Average Project Value, Gross Margin % on Best Segment, Enquiry to Closure Conversion Rate %, Payment Terms Offered (Advance/30 Days/60 Days/90 Days/Mixed), Repeat Order Frequency (Monthly/Quarterly/Annual/Project-Based), Current Production/Delivery Capacity Headroom.
 
-Avoid weak questions like "Do you have requirement?"
+Section 9 — Credibility Assets
+Extract: Notable Past Projects & Installations (name, scale, industry), Key Client Names/Logos mentioned, Client List, Certifications List, Export Presence & Countries Served, Website Quality Assessment (Strong/Partial/Weak), LinkedIn Page Status (Active/Inactive/Not Present).
 
-7. Sales Pitch Scripts
-Create:
-A. 30-second cold call pitch
-B. First meeting pitch
-C. Technical buyer pitch
-D. Purchase buyer pitch
+Section 10 — Strategy & Focus
+Extract: Top 3 Priorities for Next 12 Months, Segments to Grow Into, Segments to Exit or Stop Serving, New Geographies Being Targeted, Product or Service Expansion Planned.
 
-Each must include:
-- Opening
-- Relevance
-- Problem
-- Product value
-- Discovery question
-- Next step
+Section 11 — Watchlist / Director Notes
+Extract any red flags, client sensitivities, escalation history, complaint patterns, or special handling notes found in documents. Add Special Instructions for SE Before Outreach if inferable. If nothing found, write: "No flags found in documents — to be filled manually by Director/Manager before assigning to SE."
 
-Keep scripts natural, short, and practical.
-
-8. Objection Handling
-Handle:
-- Send details
-- Already have vendor
-- No requirement now
-- Price is high
-- Not interested
-- Talk to purchase
-- Share profile
-- Call later
-- We need lowest price
-- We only work with approved vendors
-
-For each:
-- What prospect may actually mean
-- Best response
-- Follow-up question
-- Next step
-
-Use calm consultative language. Use tactical empathy where useful:
-"It sounds like..."
-"It seems like..."
-"How are you currently handling this?"
-"What would need to be true for you to consider another supplier?"
-
-9. Lead Qualification Score
-Score out of 100:
-- Industry fit: 20
-- Application fit: 20
-- Problem/need: 20
-- Decision-maker access: 15
-- Timeline/urgency: 15
-- Commercial seriousness: 10
-
-Classify:
-- Hot
-- Warm
-- Nurture
-- Not relevant
-
-10. Call Execution Notes
-Give:
-- 5 things sales engineer must remember
-- 5 mistakes to avoid
-- 5 details to capture in CRM
-- 5 missing inputs to ask the client
-
-Final rule:
-Keep the output accurate, specific, and concise. Do not create a long essay. Create a field-usable sales readiness card."""
+Final rule: Be concise, specific, and field-usable. A sales engineer should be able to read this and walk into a meeting ready."""
 
 STUDY_MATERIAL_SYSTEM_PROMPT = """You are a Senior Sales Engineer Trainer and Industrial Product Training Specialist.
 
@@ -407,18 +312,19 @@ def _objection_bullets(items: list[ObjectionNote]) -> str:
 
 def _profile_to_markdown(p: GeneratedClientProfile) -> str:
     sections = [
-        ("## 1. Product Clarity", p.product_clarity),
-        ("## 2. Best-Fit ICP", p.best_fit_icp),
-        ("## 3. Buyer Problems and Triggers", p.buyer_problems_triggers),
-        ("## 4. Feature-to-Value Conversion", p.feature_to_value),
-        ("## 5. Stakeholder Messaging", p.stakeholder_messaging),
-        ("## 6. Discovery Questions", _bullets(p.discovery_questions)),
-        ("## 7. Sales Pitch Scripts", p.sales_pitch_scripts),
-        ("## 8. Objection Handling", p.objection_handling),
-        ("## 9. Lead Qualification Score", p.lead_qualification_score),
-        ("## 10. Call Execution Notes", p.call_execution_notes),
+        ("## Section 1 — Company Snapshot", p.company_snapshot),
+        ("## Section 2 — Offer & Products", p.offer_and_products),
+        ("## Section 3 — Ideal Buyer Profile", p.ideal_buyer_profile),
+        ("## Section 4 — Buyer Committee", p.buyer_committee),
+        ("## Section 5 — Competitor Intelligence", p.competitor_intelligence),
+        ("## Section 6 — Sales Playbook", p.sales_playbook),
+        ("## Section 7 — Demand & Timing", p.demand_and_timing),
+        ("## Section 8 — Commercial Overview", p.commercial_overview),
+        ("## Section 9 — Credibility Assets", p.credibility_assets),
+        ("## Section 10 — Strategy & Focus", p.strategy_and_focus),
+        ("## Section 11 — Watchlist / Director Notes", p.watchlist_director_notes),
     ]
-    return "\n\n".join(f"{heading}\n{content}" for heading, content in sections if content)
+    return "\n\n".join(f"{heading}\n\n{content}" for heading, content in sections if content)
 
 
 def _study_material_to_markdown(m: GeneratedStudyMaterial) -> str:
