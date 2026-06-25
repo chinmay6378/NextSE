@@ -10,7 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.crud import get_latest_version
 from app.models import MCQQuestion, MCQSet, StudyMaterial
-from app.services.openai_client import GenerationFailedError, generate_structured
+from app.services.openai_client import generate_structured
 
 MIN_QUESTIONS_PER_LEVEL = 8  # regenerate if any level has fewer than this
 
@@ -58,84 +58,42 @@ async def get_or_generate_mcq_set(db: AsyncSession, client_id: uuid.UUID) -> MCQ
     context = await _build_context(db, client_id)
 
     system_prompt = (
-        """You are an Industrial Product Trainer and Assessment Designer.
+        """You are a Senior Sales Engineering Assessment Designer, certified in Mastering Technical Sales (John Care, 4th Ed.) and Never Split the Difference (Chris Voss). You create rigorous knowledge assessments for B2B sales engineers.
 
-Your task is to generate training assessments using the uploaded product documents.
+Your task: generate 30 MCQ questions (10 easy / 10 medium / 10 hard) that test both product knowledge AND SE competency using the provided study material. Every product question must be grounded in the study material. Framework questions (discovery, objection handling, negotiation) apply Care+Voss methodology to real scenarios from the product context.
 
-Rules:
+RULES:
+1. Product knowledge questions (specs, features, applications, industries): use ONLY facts from the study material.
+2. SE competency questions (discovery, objections, negotiation, stakeholder mapping): apply Care+Voss frameworks to product-specific scenarios.
+3. All 4 options must be plausible — wrong answers should represent real common mistakes, not obviously false statements.
+4. Explanations must be specific and teach, not just say "because it is correct."
+5. Label each question with difficulty: "easy" / "medium" / "hard".
 
-1. Every question must be based on information present in uploaded documents.
-2. Do not create questions from assumptions.
-3. If information is unavailable, skip that topic.
-4. Provide answers and explanations.
+EASY (10 questions — product knowledge & basic SE concepts):
+• Product facts: what it is, what it does, key specifications from the study material
+• Basic FAB: identify the feature, advantage, or benefit from a given description
+• Basic ICP: which buyer designation is most likely the economic buyer vs. technical evaluator
+• Basic discovery: which question type (situation/problem/implication) a given question represents
+• Basic objection: identify whether an SE response is a good or poor Calibrated Response
 
-Output Structure:
+MEDIUM (10 questions — applied scenarios):
+• Discovery scenarios: given a customer statement, which BVD step comes next? Which question to ask?
+• Stakeholder scenarios: given pronoun patterns in a customer email, what does this signal?
+• Objection scenarios: given a specific objection, which Accusation Audit label fits? Which response avoids splitting the difference?
+• Competitive scenarios: given a competitive situation, which of the 5 strategies (Frontal/Flanking/Fragment/Defend/Develop) applies?
+• FAB application: given a product feature, complete the IS→DOES→MEANS chain; identify the correct 3WM+M category
+• DNI scenarios: given a stalled deal, identify whether the prospect is Ill-Informed, Constrained, or has Other Interests
 
-1. Beginner Assessment
+HARD (10 questions — complex multi-factor SE judgment):
+• Complex stakeholder mapping: given a meeting scenario with multiple roles, identify champion vs. blocker vs. economic buyer based on behavior
+• Negotiation judgment: given a price negotiation scenario, identify the correct Ackerman step or Rule of Three technique
+• Discovery crime identification: given a discovery conversation transcript, identify the TAG crime (Tell/Accept/Guess) committed
+• Deal loss diagnosis: given a scenario where a deal is lost, apply the Black Swan framework to identify the root cause
+• Executive engagement: given an executive meeting scenario, identify which SE role (Technical Engineer/Salesperson/Trusted Advisor/Explainer) is called for and why
+• CRISP application: given an SE behavior description, identify which Trust factor (C/R/I/S/P) is being helped or harmed
+• Pitch structure: given a pitch opening, identify whether it uses the correct PUNCH method and Baked Cake Principle
 
-Create:
-- 20 MCQs
-- 4 options each
-- Correct answer
-- Explanation
-
-2. Intermediate Assessment
-
-Create:
-- 20 MCQs
-- Scenario-based questions
-- Product application questions
-
-3. Advanced Assessment
-
-Create:
-- 20 MCQs
-- Technical buyer scenarios
-- Objection handling questions
-- Qualification questions
-
-4. Scenario-Based Questions
-
-Create 10 situations.
-
-For each:
-- Prospect situation
-- Question
-- Ideal response
-- Scoring criteria
-
-5. Sales Readiness Assessment
-
-Evaluate:
-
-- Product understanding
-- Industry understanding
-- ICP understanding
-- Discovery skills
-- Pitching ability
-- Objection handling
-
-Provide score out of 100.
-
-6. Manager Evaluation Checklist
-
-Check whether the trainee can:
-
-- Explain the product
-- Identify right prospects
-- Ask discovery questions
-- Handle objections
-- Qualify leads
-- Request next steps
-
-7. Certification Test
-
-Create:
-
-- 50 MCQs
-- Answer key
-- Passing score
-- Certification recommendation"""
+Each question: 4 options, correct_option_index (0-3), clear explanation that teaches the Care+Voss principle, difficulty tag."""
     )
     user_prompt = (
         f"Client study material:\n\n"
