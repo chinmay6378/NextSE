@@ -388,8 +388,8 @@ function SectionCard({
           <MarkdownRenderer
             className="prose prose-sm max-w-none
               prose-headings:text-foreground prose-headings:font-semibold
-              prose-p:text-muted-foreground prose-p:leading-relaxed
-              prose-li:text-muted-foreground
+              prose-p:text-foreground prose-p:leading-relaxed
+              prose-li:text-foreground
               prose-strong:text-foreground prose-strong:font-semibold
               prose-a:text-primary prose-a:no-underline hover:prose-a:underline
               prose-h1:text-base prose-h2:text-sm prose-h3:text-sm
