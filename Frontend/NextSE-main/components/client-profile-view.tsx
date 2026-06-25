@@ -73,11 +73,11 @@ const SECTIONS: SectionCfg[] = [
   {
     key: 'sales_playbook', num: 6, title: 'Sales Playbook', shortTitle: 'Playbook',
     icon: BookOpen,
-    navBg: 'bg-cyan-500/10', navBorder: 'border-cyan-500/25', navText: 'text-cyan-300',
-    cardBorder: 'border-cyan-500/20', headerBg: 'bg-gradient-to-r from-cyan-500/10 via-cyan-500/5 to-transparent',
-    badgeBg: 'bg-cyan-500/20', badgeText: 'text-cyan-300',
-    iconBg: 'bg-cyan-500/20', iconText: 'text-cyan-400',
-    accentBar: 'bg-cyan-500',
+    navBg: 'bg-teal-500/10', navBorder: 'border-teal-500/25', navText: 'text-teal-300',
+    cardBorder: 'border-teal-600/30', headerBg: 'bg-gradient-to-r from-teal-600/15 via-teal-500/8 to-transparent',
+    badgeBg: 'bg-teal-500/25', badgeText: 'text-teal-200',
+    iconBg: 'bg-teal-500/25', iconText: 'text-teal-300',
+    accentBar: 'bg-teal-500',
   },
   {
     key: 'demand_and_timing', num: 7, title: 'Demand & Timing', shortTitle: 'Timing',
@@ -200,17 +200,17 @@ function BuyerCommitteeTree() {
 
 function SalesFunnel() {
   const stages = [
-    { label: 'Lead Sources',           pct: 100, bg: 'bg-cyan-700',   text: 'text-white' },
-    { label: 'First Contact',          pct: 84,  bg: 'bg-cyan-600',   text: 'text-white' },
-    { label: 'Technical Discussion',   pct: 68,  bg: 'bg-cyan-500',   text: 'text-white' },
-    { label: 'Commercial Negotiation', pct: 52,  bg: 'bg-cyan-400',   text: 'text-white' },
-    { label: 'PO Closure',            pct: 38,  bg: 'bg-cyan-300',   text: 'text-cyan-950' },
-    { label: 'Repeat Order',          pct: 26,  bg: 'bg-cyan-200',   text: 'text-cyan-950' },
+    { label: 'Lead Sources',           pct: 100, bg: 'bg-teal-700',   text: 'text-white' },
+    { label: 'First Contact',          pct: 84,  bg: 'bg-teal-600',   text: 'text-white' },
+    { label: 'Technical Discussion',   pct: 68,  bg: 'bg-teal-500',   text: 'text-white' },
+    { label: 'Commercial Negotiation', pct: 52,  bg: 'bg-teal-400',   text: 'text-white' },
+    { label: 'PO Closure',            pct: 38,  bg: 'bg-teal-300',   text: 'text-teal-950' },
+    { label: 'Repeat Order',          pct: 26,  bg: 'bg-teal-200',   text: 'text-teal-950' },
   ]
 
   return (
-    <div className="rounded-xl border border-cyan-500/15 bg-cyan-500/5 p-4 mb-5">
-      <p className="text-[10px] font-bold uppercase tracking-widest text-cyan-400/60 mb-4">
+    <div className="rounded-xl border border-teal-500/20 bg-teal-500/8 p-4 mb-5">
+      <p className="text-[10px] font-bold uppercase tracking-widest text-teal-500 mb-4">
         Sales Pipeline Stages
       </p>
       <div className="flex flex-col items-center gap-1">
@@ -334,7 +334,7 @@ function SectionCard({
   return (
     <div
       ref={divRef}
-      className={cn('rounded-2xl border overflow-hidden scroll-mt-4', cfg.cardBorder)}
+      className={cn('rounded-2xl border overflow-hidden scroll-mt-4 bg-card', cfg.cardBorder)}
     >
       {/* Header */}
       <button
@@ -387,11 +387,15 @@ function SectionCard({
 
           <MarkdownRenderer
             className="prose prose-sm max-w-none
-              prose-headings:text-foreground prose-headings:font-semibold
-              prose-p:text-foreground prose-p:leading-relaxed
-              prose-li:text-foreground
-              prose-strong:text-foreground prose-strong:font-semibold
-              prose-a:text-primary prose-a:no-underline hover:prose-a:underline
+              [--tw-prose-body:hsl(var(--foreground))]
+              [--tw-prose-headings:hsl(var(--foreground))]
+              [--tw-prose-bold:hsl(var(--foreground))]
+              [--tw-prose-bullets:hsl(var(--foreground))]
+              [--tw-prose-counters:hsl(var(--foreground))]
+              [--tw-prose-links:hsl(var(--primary))]
+              prose-headings:font-semibold
+              prose-p:leading-relaxed
+              prose-a:no-underline hover:prose-a:underline
               prose-h1:text-base prose-h2:text-sm prose-h3:text-sm
               prose-ul:space-y-1 prose-ol:space-y-1
               [&>*:first-child]:mt-0"
