@@ -460,7 +460,25 @@ export function ClientProfileView({ contentJson, contentMarkdown }: ClientProfil
     return typeof v === 'string' && v.trim().length > 0
   })
 
-  if (activeSections.length === 0) return null
+  if (activeSections.length === 0) {
+    // Old-format profile: no matching sections — render markdown with table support
+    if (!contentMarkdown) return null
+    return (
+      <MarkdownRenderer
+        className="prose prose-sm max-w-none
+          prose-headings:text-foreground prose-headings:font-semibold
+          prose-p:text-muted-foreground prose-p:leading-relaxed
+          prose-li:text-muted-foreground
+          prose-strong:text-foreground prose-strong:font-semibold
+          prose-a:text-primary prose-a:no-underline hover:prose-a:underline
+          prose-h1:text-xl prose-h2:text-lg prose-h3:text-base
+          prose-ul:space-y-1 prose-ol:space-y-1
+          [&>*:first-child]:mt-0"
+      >
+        {contentMarkdown}
+      </MarkdownRenderer>
+    )
+  }
 
   const scrollTo = (key: string) => {
     sectionRefs.current[key]?.scrollIntoView({ behavior: 'smooth', block: 'start' })
