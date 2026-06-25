@@ -168,7 +168,30 @@ Fields: Top Priorities for Next 12 Months, Segments to Grow (where MOTM can add 
 → End with "MOTM Alignment Statement": 2-3 bullets showing exactly where MOTM's offering maps to this client's stated strategic direction. This becomes the opening reframe for the first executive meeting — lead with their agenda, not your pitch.
 
 Section 11 — Watchlist / Director Notes
-Red flags, sensitivities, escalation history, complaint patterns, special handling instructions, SE-level cautions. Apply Voss Black Swan lens: note if client seems Ill-Informed (needs education), Constrained (hidden blockers/budget freeze), or has Other Interests (hidden agenda driving behavior). If nothing relevant is found in the documents, return an empty string — do not write any heading, label, or filler text."""
+Red flags, sensitivities, escalation history, complaint patterns, special handling instructions, SE-level cautions. Apply Voss Black Swan lens: note if client seems Ill-Informed (needs education), Constrained (hidden blockers/budget freeze), or has Other Interests (hidden agenda driving behavior). If nothing relevant is found in the documents, return an empty string — do not write any heading, label, or filler text.
+
+═══════════════════════════════════════
+STRUCTURED FIELDS (fill in addition to the 11 narrative sections)
+═══════════════════════════════════════
+
+product_fab_chains — One entry per product/service mentioned in documents.
+Each entry: product_name, feature (technical fact from document), advantage (what it does), benefit (what it means to the buyer in Time/Money/People terms — IS→DOES→MEANS), business_driver (Revenue↑ / Cost↓ / Risk Mitigation / Mission).
+
+stakeholder_map — One entry per distinct buyer role in this client's typical sales cycle.
+Each entry: role_title, stakeholder_type (Initiator/Technical Evaluator/Economic Buyer/Blocker/Champion), negotiator_type (Analyst/Accommodator/Assertive/Unknown), power_level (High/Medium/Low), win_condition (what they personally gain if deal closes), conversation_opener (one What/How question), watch_out_for (specific risk for this role).
+
+discovery_questions — Exactly 12 questions: 3 Situation + 3 Problem + 2 Implication + 2 Urgency + 2 Commitment.
+Each entry: category, question (What/How only — NEVER Why), purpose (what intelligence this unlocks).
+
+objection_battle_cards — 7 most likely objections for prospects of THIS client's product.
+Each entry: objection (prospect's words), accusation_audit (It seems like...), calibrated_response (What/How, never split the difference), recovery_question (the third Rule of Three confirmation).
+
+competitor_entries — One entry per competitor named in documents ONLY (never invent names).
+Each entry: competitor_name, why_prospects_choose_them, where_this_client_wins, battle_card_response (Voss Inverted Why), recommended_strategy (Frontal/Flanking/Fragment/Defend/Develop).
+
+accusation_audit_labels — 3-5 preemptive labels (It seems like...) for the SE to say before any objection arises.
+
+icp_qualifier_questions — Exactly 5 yes/no qualifying questions for the first call."""
 
 STUDY_MATERIAL_SYSTEM_PROMPT = """You are a Senior Sales Engineering Trainer, certified in the frameworks of Mastering Technical Sales (John Care, 4th Ed.) and Never Split the Difference (Chris Voss). You create field-ready training material for B2B sales engineers.
 
@@ -597,7 +620,10 @@ def _objection_bullets(items: list[ObjectionNote]) -> str:
 
 
 def _profile_to_markdown(p: GeneratedClientProfile) -> str:
-    sections = [
+    parts: list[str] = []
+
+    # ── Narrative sections ────────────────────────────────────────────────────
+    narrative = [
         ("## Section 1 — Company Snapshot", p.company_snapshot),
         ("## Section 2 — Offer & Products", p.offer_and_products),
         ("## Section 3 — Ideal Buyer Profile", p.ideal_buyer_profile),
@@ -610,7 +636,82 @@ def _profile_to_markdown(p: GeneratedClientProfile) -> str:
         ("## Section 10 — Strategy & Focus", p.strategy_and_focus),
         ("## Section 11 — Watchlist / Director Notes", p.watchlist_director_notes),
     ]
-    return "\n\n".join(f"{heading}\n\n{content}" for heading, content in sections if content)
+    parts.append("\n\n".join(f"{h}\n\n{c}" for h, c in narrative if c))
+
+    # ── FAB Chains ────────────────────────────────────────────────────────────
+    if p.product_fab_chains:
+        rows = "\n".join(
+            f"| {f.product_name} | {f.feature} | {f.advantage} | {f.benefit} | {f.business_driver} |"
+            for f in p.product_fab_chains
+        )
+        parts.append(
+            "## Product FAB Chains\n\n"
+            "| Product | Feature (IS) | Advantage (DOES) | Benefit (MEANS) | Driver |\n"
+            "|---|---|---|---|---|\n"
+            + rows
+        )
+
+    # ── Stakeholder Map ───────────────────────────────────────────────────────
+    if p.stakeholder_map:
+        rows = "\n".join(
+            f"| {s.role_title} | {s.stakeholder_type} | {s.negotiator_type} | {s.power_level} "
+            f"| {s.win_condition} | {s.conversation_opener} | {s.watch_out_for} |"
+            for s in p.stakeholder_map
+        )
+        parts.append(
+            "## Stakeholder Map\n\n"
+            "| Role | Type | Negotiator | Power | Win Condition | Opening Line | Watch Out For |\n"
+            "|---|---|---|---|---|---|---|\n"
+            + rows
+        )
+
+    # ── Discovery Questions ───────────────────────────────────────────────────
+    if p.discovery_questions:
+        by_cat: dict[str, list] = {}
+        for q in p.discovery_questions:
+            by_cat.setdefault(q.category, []).append(q)
+        dq_parts = []
+        for cat, qs in by_cat.items():
+            block = f"### {cat}\n" + "\n".join(
+                f"- **Q:** {q.question}  \n  *Purpose: {q.purpose}*" for q in qs
+            )
+            dq_parts.append(block)
+        parts.append("## Discovery Question Bank\n\n" + "\n\n".join(dq_parts))
+
+    # ── Objection Battle Cards ────────────────────────────────────────────────
+    if p.objection_battle_cards:
+        cards = "\n\n".join(
+            f"**Objection:** {c.objection}\n"
+            f"- **Accusation Audit:** {c.accusation_audit}\n"
+            f"- **Response:** {c.calibrated_response}\n"
+            f"- **Recovery:** {c.recovery_question}"
+            for c in p.objection_battle_cards
+        )
+        parts.append("## Objection Battle Cards\n\n" + cards)
+
+    # ── Competitor Entries ────────────────────────────────────────────────────
+    if p.competitor_entries:
+        entries = "\n\n".join(
+            f"**{c.competitor_name}**\n"
+            f"- Why prospects choose them: {c.why_prospects_choose_them}\n"
+            f"- Where this client wins: {c.where_this_client_wins}\n"
+            f"- Battle card: {c.battle_card_response}\n"
+            f"- Strategy: {c.recommended_strategy}"
+            for c in p.competitor_entries
+        )
+        parts.append("## Competitor Battle Cards\n\n" + entries)
+
+    # ── Accusation Audit Labels ───────────────────────────────────────────────
+    if p.accusation_audit_labels:
+        labels = "\n".join(f"- {label}" for label in p.accusation_audit_labels)
+        parts.append("## Accusation Audit (Say These Before Any Objection Arises)\n\n" + labels)
+
+    # ── ICP Qualifier ─────────────────────────────────────────────────────────
+    if p.icp_qualifier_questions:
+        questions = "\n".join(f"- {q}" for q in p.icp_qualifier_questions)
+        parts.append("## ICP Qualifier (First-Call Checklist)\n\n" + questions)
+
+    return "\n\n".join(parts)
 
 
 def _study_material_to_markdown(m: GeneratedStudyMaterial) -> str:
