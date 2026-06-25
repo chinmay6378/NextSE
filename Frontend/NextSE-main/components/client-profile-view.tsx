@@ -464,19 +464,27 @@ export function ClientProfileView({ contentJson, contentMarkdown }: ClientProfil
     // Old-format profile: no matching sections — render markdown with table support
     if (!contentMarkdown) return null
     return (
-      <MarkdownRenderer
-        className="prose prose-sm max-w-none
-          prose-headings:text-foreground prose-headings:font-semibold
-          prose-p:text-muted-foreground prose-p:leading-relaxed
-          prose-li:text-muted-foreground
-          prose-strong:text-foreground prose-strong:font-semibold
-          prose-a:text-primary prose-a:no-underline hover:prose-a:underline
-          prose-h1:text-xl prose-h2:text-lg prose-h3:text-base
-          prose-ul:space-y-1 prose-ol:space-y-1
-          [&>*:first-child]:mt-0"
-      >
-        {contentMarkdown}
-      </MarkdownRenderer>
+      <div className="space-y-4">
+        <div className="flex items-center gap-2.5 px-4 py-3 rounded-xl bg-amber-500/10 border border-amber-500/20">
+          <span className="text-amber-400 text-base">✦</span>
+          <p className="text-xs text-amber-300">
+            This profile was generated with an older format. Click <strong>Regenerate</strong> to get the new visual layout with section cards and diagrams.
+          </p>
+        </div>
+        <MarkdownRenderer
+          className="prose prose-sm max-w-none
+            prose-headings:text-foreground prose-headings:font-semibold
+            prose-p:text-muted-foreground prose-p:leading-relaxed
+            prose-li:text-muted-foreground
+            prose-strong:text-foreground prose-strong:font-semibold
+            prose-a:text-primary prose-a:no-underline hover:prose-a:underline
+            prose-h1:text-xl prose-h2:text-lg prose-h3:text-base
+            prose-ul:space-y-1 prose-ol:space-y-1
+            [&>*:first-child]:mt-0"
+        >
+          {contentMarkdown}
+        </MarkdownRenderer>
+      </div>
     )
   }
 
