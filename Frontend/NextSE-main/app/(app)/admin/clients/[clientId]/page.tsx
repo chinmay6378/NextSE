@@ -767,8 +767,11 @@ export default function ClientDetailPage({ params }: { params: Promise<{ clientI
                     animate={{ opacity: 1 }}
                   >
                     {/* Rich visual layout for profile; plain markdown for other tabs */}
-                    {tab === 'profile' && currentSection.content_json ? (
-                      <ClientProfileView contentJson={currentSection.content_json as Record<string, unknown>} />
+                    {tab === 'profile' ? (
+                      <ClientProfileView
+                        contentJson={currentSection.content_json as Record<string, unknown> | null}
+                        contentMarkdown={currentSection.content_markdown}
+                      />
                     ) : (
                       <MarkdownRenderer
                         className="prose prose-sm max-w-none

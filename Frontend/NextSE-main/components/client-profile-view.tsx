@@ -404,17 +404,42 @@ function SectionCard({
   )
 }
 
+// ─── Markdown fallback parser ─────────────────────────────────────────────────
+
+const SECTION_KEYS = [
+  'company_snapshot', 'offer_and_products', 'ideal_buyer_profile',
+  'buyer_committee', 'competitor_intelligence', 'sales_playbook',
+  'demand_and_timing', 'commercial_overview', 'credibility_assets',
+  'strategy_and_focus', 'watchlist_director_notes',
+]
+
+function parseProfileMarkdown(markdown: string): Record<string, string> {
+  const result: Record<string, string> = {}
+  const parts = markdown.split(/(?=^## Section \d+)/m)
+  for (const part of parts) {
+    const match = part.match(/^## Section (\d+)\s*[—–-]\s*.+\n([\s\S]*)/)
+    if (!match) continue
+    const key = SECTION_KEYS[parseInt(match[1]) - 1]
+    if (key && match[2].trim()) result[key] = match[2].trim()
+  }
+  return result
+}
+
 // ─── Main export ──────────────────────────────────────────────────────────────
 
 interface ClientProfileViewProps {
-  contentJson: Record<string, unknown>
+  contentJson?: Record<string, unknown> | null
+  contentMarkdown?: string | null
 }
 
-export function ClientProfileView({ contentJson }: ClientProfileViewProps) {
+export function ClientProfileView({ contentJson, contentMarkdown }: ClientProfileViewProps) {
   const sectionRefs = useRef<Record<string, HTMLDivElement | null>>({})
 
+  const effectiveJson: Record<string, unknown> =
+    contentJson ?? (contentMarkdown ? parseProfileMarkdown(contentMarkdown) : {})
+
   const activeSections = SECTIONS.filter(s => {
-    const v = contentJson[s.key]
+    const v = effectiveJson[s.key]
     return typeof v === 'string' && v.trim().length > 0
   })
 
@@ -461,7 +486,7 @@ export function ClientProfileView({ contentJson }: ClientProfileViewProps) {
         <SectionCard
           key={cfg.key}
           cfg={cfg}
-          content={contentJson[cfg.key] as string}
+          content={effectiveJson[cfg.key] as string}
           divRef={(el) => { sectionRefs.current[cfg.key] = el }}
         />
       ))}
