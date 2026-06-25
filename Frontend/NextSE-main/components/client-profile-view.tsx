@@ -1,12 +1,7 @@
 'use client'
 
 import { useRef, useState } from 'react'
-import {
-  AlertTriangle, Award, BookOpen, Building2, Calendar,
-  ChevronDown, ChevronUp, DollarSign, Package, Rocket,
-  Shield, Target, TrendingUp, Users, ArrowDown,
-} from 'lucide-react'
-import { cn } from '@/lib/utils'
+import { ChevronDown, ChevronUp } from 'lucide-react'
 import { MarkdownRenderer } from './markdown-renderer'
 
 // ─── Section config ───────────────────────────────────────────────────────────
@@ -16,309 +11,21 @@ interface SectionCfg {
   num: number
   title: string
   shortTitle: string
-  icon: React.ElementType
-  navBg: string; navBorder: string; navText: string
-  cardBorder: string; headerBg: string
-  badgeBg: string; badgeText: string
-  iconBg: string; iconText: string
-  accentBar: string
 }
 
 const SECTIONS: SectionCfg[] = [
-  {
-    key: 'company_snapshot', num: 1, title: 'Company Snapshot', shortTitle: 'Company',
-    icon: Building2,
-    navBg: 'bg-blue-500/10', navBorder: 'border-blue-500/25', navText: 'text-blue-300',
-    cardBorder: 'border-blue-500/20', headerBg: 'bg-gradient-to-r from-blue-500/10 via-blue-500/5 to-transparent',
-    badgeBg: 'bg-blue-500/20', badgeText: 'text-blue-300',
-    iconBg: 'bg-blue-500/20', iconText: 'text-blue-400',
-    accentBar: 'bg-blue-500',
-  },
-  {
-    key: 'offer_and_products', num: 2, title: 'Offer & Products', shortTitle: 'Products',
-    icon: Package,
-    navBg: 'bg-violet-500/10', navBorder: 'border-violet-500/25', navText: 'text-violet-300',
-    cardBorder: 'border-violet-500/20', headerBg: 'bg-gradient-to-r from-violet-500/10 via-violet-500/5 to-transparent',
-    badgeBg: 'bg-violet-500/20', badgeText: 'text-violet-300',
-    iconBg: 'bg-violet-500/20', iconText: 'text-violet-400',
-    accentBar: 'bg-violet-500',
-  },
-  {
-    key: 'ideal_buyer_profile', num: 3, title: 'Ideal Buyer Profile', shortTitle: 'Ideal Buyer',
-    icon: Target,
-    navBg: 'bg-emerald-500/10', navBorder: 'border-emerald-500/25', navText: 'text-emerald-300',
-    cardBorder: 'border-emerald-500/20', headerBg: 'bg-gradient-to-r from-emerald-500/10 via-emerald-500/5 to-transparent',
-    badgeBg: 'bg-emerald-500/20', badgeText: 'text-emerald-300',
-    iconBg: 'bg-emerald-500/20', iconText: 'text-emerald-400',
-    accentBar: 'bg-emerald-500',
-  },
-  {
-    key: 'buyer_committee', num: 4, title: 'Buyer Committee', shortTitle: 'Committee',
-    icon: Users,
-    navBg: 'bg-orange-500/10', navBorder: 'border-orange-500/25', navText: 'text-orange-300',
-    cardBorder: 'border-orange-500/20', headerBg: 'bg-gradient-to-r from-orange-500/10 via-orange-500/5 to-transparent',
-    badgeBg: 'bg-orange-500/20', badgeText: 'text-orange-300',
-    iconBg: 'bg-orange-500/20', iconText: 'text-orange-400',
-    accentBar: 'bg-orange-500',
-  },
-  {
-    key: 'competitor_intelligence', num: 5, title: 'Competitor Intelligence', shortTitle: 'Competitors',
-    icon: Shield,
-    navBg: 'bg-red-500/10', navBorder: 'border-red-500/25', navText: 'text-red-300',
-    cardBorder: 'border-red-500/20', headerBg: 'bg-gradient-to-r from-red-500/10 via-red-500/5 to-transparent',
-    badgeBg: 'bg-red-500/20', badgeText: 'text-red-300',
-    iconBg: 'bg-red-500/20', iconText: 'text-red-400',
-    accentBar: 'bg-red-500',
-  },
-  {
-    key: 'sales_playbook', num: 6, title: 'Sales Playbook', shortTitle: 'Playbook',
-    icon: BookOpen,
-    navBg: 'bg-teal-500/10', navBorder: 'border-teal-500/25', navText: 'text-teal-300',
-    cardBorder: 'border-teal-600/30', headerBg: 'bg-gradient-to-r from-teal-600/15 via-teal-500/8 to-transparent',
-    badgeBg: 'bg-teal-500/25', badgeText: 'text-teal-200',
-    iconBg: 'bg-teal-500/25', iconText: 'text-teal-300',
-    accentBar: 'bg-teal-500',
-  },
-  {
-    key: 'demand_and_timing', num: 7, title: 'Demand & Timing', shortTitle: 'Timing',
-    icon: Calendar,
-    navBg: 'bg-amber-500/10', navBorder: 'border-amber-500/25', navText: 'text-amber-300',
-    cardBorder: 'border-amber-500/20', headerBg: 'bg-gradient-to-r from-amber-500/10 via-amber-500/5 to-transparent',
-    badgeBg: 'bg-amber-500/20', badgeText: 'text-amber-300',
-    iconBg: 'bg-amber-500/20', iconText: 'text-amber-400',
-    accentBar: 'bg-amber-500',
-  },
-  {
-    key: 'commercial_overview', num: 8, title: 'Commercial Overview', shortTitle: 'Commercial',
-    icon: DollarSign,
-    navBg: 'bg-green-500/10', navBorder: 'border-green-500/25', navText: 'text-green-300',
-    cardBorder: 'border-green-500/20', headerBg: 'bg-gradient-to-r from-green-500/10 via-green-500/5 to-transparent',
-    badgeBg: 'bg-green-500/20', badgeText: 'text-green-300',
-    iconBg: 'bg-green-500/20', iconText: 'text-green-400',
-    accentBar: 'bg-green-500',
-  },
-  {
-    key: 'credibility_assets', num: 9, title: 'Credibility Assets', shortTitle: 'Credibility',
-    icon: Award,
-    navBg: 'bg-indigo-500/10', navBorder: 'border-indigo-500/25', navText: 'text-indigo-300',
-    cardBorder: 'border-indigo-500/20', headerBg: 'bg-gradient-to-r from-indigo-500/10 via-indigo-500/5 to-transparent',
-    badgeBg: 'bg-indigo-500/20', badgeText: 'text-indigo-300',
-    iconBg: 'bg-indigo-500/20', iconText: 'text-indigo-400',
-    accentBar: 'bg-indigo-500',
-  },
-  {
-    key: 'strategy_and_focus', num: 10, title: 'Strategy & Focus', shortTitle: 'Strategy',
-    icon: Rocket,
-    navBg: 'bg-pink-500/10', navBorder: 'border-pink-500/25', navText: 'text-pink-300',
-    cardBorder: 'border-pink-500/20', headerBg: 'bg-gradient-to-r from-pink-500/10 via-pink-500/5 to-transparent',
-    badgeBg: 'bg-pink-500/20', badgeText: 'text-pink-300',
-    iconBg: 'bg-pink-500/20', iconText: 'text-pink-400',
-    accentBar: 'bg-pink-500',
-  },
-  {
-    key: 'watchlist_director_notes', num: 11, title: 'Watchlist / Director Notes', shortTitle: 'Watchlist',
-    icon: AlertTriangle,
-    navBg: 'bg-red-600/10', navBorder: 'border-red-600/30', navText: 'text-red-400',
-    cardBorder: 'border-red-600/30', headerBg: 'bg-gradient-to-r from-red-600/15 via-red-600/5 to-transparent',
-    badgeBg: 'bg-red-600/20', badgeText: 'text-red-300',
-    iconBg: 'bg-red-600/20', iconText: 'text-red-400',
-    accentBar: 'bg-red-600',
-  },
+  { key: 'company_snapshot',        num: 1,  title: 'Company Snapshot',         shortTitle: 'Company'    },
+  { key: 'offer_and_products',      num: 2,  title: 'Offer & Products',         shortTitle: 'Products'   },
+  { key: 'ideal_buyer_profile',     num: 3,  title: 'Ideal Buyer Profile',      shortTitle: 'Ideal Buyer'},
+  { key: 'buyer_committee',         num: 4,  title: 'Buyer Committee',          shortTitle: 'Committee'  },
+  { key: 'competitor_intelligence', num: 5,  title: 'Competitor Intelligence',  shortTitle: 'Competitors'},
+  { key: 'sales_playbook',          num: 6,  title: 'Sales Playbook',           shortTitle: 'Playbook'   },
+  { key: 'demand_and_timing',       num: 7,  title: 'Demand & Timing',          shortTitle: 'Timing'     },
+  { key: 'commercial_overview',     num: 8,  title: 'Commercial Overview',      shortTitle: 'Commercial' },
+  { key: 'credibility_assets',      num: 9,  title: 'Credibility Assets',       shortTitle: 'Credibility'},
+  { key: 'strategy_and_focus',      num: 10, title: 'Strategy & Focus',         shortTitle: 'Strategy'   },
+  { key: 'watchlist_director_notes',num: 11, title: 'Watchlist / Director Notes',shortTitle: 'Watchlist' },
 ]
-
-// ─── Visual diagrams ──────────────────────────────────────────────────────────
-
-function BuyerCommitteeTree() {
-  const tiers = [
-    {
-      label: 'Initiates Requirement',
-      sub: 'Spots the need, raises indent',
-      emoji: '📋',
-      bg: 'bg-yellow-500/10', border: 'border-yellow-500/25', text: 'text-yellow-200',
-    },
-    {
-      label: 'Technical Evaluator',
-      sub: 'Reviews specs & quality',
-      emoji: '⚙️',
-      bg: 'bg-orange-500/10', border: 'border-orange-500/25', text: 'text-orange-200',
-    },
-    {
-      label: 'Final Decision Maker',
-      sub: 'Signs off & releases PO',
-      emoji: '✅',
-      bg: 'bg-green-500/10', border: 'border-green-500/25', text: 'text-green-200',
-    },
-  ]
-
-  return (
-    <div className="rounded-xl border border-orange-500/15 bg-orange-500/5 p-4 mb-5">
-      <p className="text-[10px] font-bold uppercase tracking-widest text-orange-400/60 mb-4">
-        Decision Hierarchy
-      </p>
-
-      {/* Vertical chain */}
-      <div className="flex flex-col items-center gap-0 max-w-xs mx-auto">
-        {tiers.map((tier, i) => (
-          <div key={i} className="flex flex-col items-center w-full">
-            <div className={cn('flex items-center gap-3 px-4 py-2.5 rounded-xl border w-full', tier.bg, tier.border)}>
-              <span className="text-lg shrink-0">{tier.emoji}</span>
-              <div>
-                <p className={cn('text-xs font-semibold', tier.text)}>{tier.label}</p>
-                <p className="text-[10px] text-muted-foreground">{tier.sub}</p>
-              </div>
-            </div>
-            {i < tiers.length - 1 && (
-              <div className="flex flex-col items-center my-0.5">
-                <div className="w-0.5 h-3 bg-orange-500/30" />
-                <ArrowDown size={10} className="text-orange-500/40" />
-                <div className="w-0.5 h-1 bg-orange-500/30" />
-              </div>
-            )}
-          </div>
-        ))}
-      </div>
-
-      {/* Blocker row */}
-      <div className="flex items-center gap-2 mt-4 max-w-xs mx-auto">
-        <div className="flex-1 h-px bg-red-500/25" />
-        <div className="flex items-center gap-2 px-3 py-2 rounded-xl border border-red-500/25 bg-red-500/10">
-          <span className="text-sm">⛔</span>
-          <div>
-            <p className="text-[11px] font-semibold text-red-300">Deal Blocker</p>
-            <p className="text-[10px] text-muted-foreground">Can veto at any stage</p>
-          </div>
-        </div>
-        <div className="flex-1 h-px bg-red-500/25" />
-      </div>
-
-      <p className="text-[10px] text-muted-foreground/50 text-center mt-3">
-        Map each role to the actual contact before outreach
-      </p>
-    </div>
-  )
-}
-
-function SalesFunnel() {
-  const stages = [
-    { label: 'Lead Sources',           pct: 100 },
-    { label: 'First Contact',          pct: 84  },
-    { label: 'Technical Discussion',   pct: 68  },
-    { label: 'Commercial Negotiation', pct: 52  },
-    { label: 'PO Closure',            pct: 38  },
-    { label: 'Repeat Order',          pct: 26  },
-  ]
-
-  return (
-    <div className="rounded-xl border border-teal-600/30 bg-teal-950/30 p-4 mb-5">
-      <p className="text-[10px] font-bold uppercase tracking-widest text-teal-400 mb-4">
-        Sales Pipeline Stages
-      </p>
-      <div className="space-y-2">
-        {stages.map((stage, i) => (
-          <div key={i} className="flex items-center gap-3">
-            <span className="text-[10px] font-semibold text-teal-200 w-44 shrink-0 text-right leading-tight">
-              {stage.label}
-            </span>
-            <div className="flex-1 bg-teal-950/60 rounded-full h-6 overflow-hidden">
-              <div
-                className="h-full bg-gradient-to-r from-teal-600 to-teal-400 rounded-full flex items-center justify-end pr-2.5"
-                style={{ width: `${stage.pct}%` }}
-              >
-                <span className="text-[10px] font-bold text-white">{stage.pct}%</span>
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
-      <p className="text-[10px] text-teal-400/40 text-center mt-3">
-        Refer to content below for exact drop-off reasons
-      </p>
-    </div>
-  )
-}
-
-function DemandTimingStrip() {
-  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
-  const quarters = [
-    { label: 'Q1', months: [0, 1, 2] },
-    { label: 'Q2', months: [3, 4, 5] },
-    { label: 'Q3', months: [6, 7, 8] },
-    { label: 'Q4', months: [9, 10, 11] },
-  ]
-
-  return (
-    <div className="rounded-xl border border-amber-500/15 bg-amber-500/5 p-4 mb-5">
-      <p className="text-[10px] font-bold uppercase tracking-widest text-amber-400/60 mb-3">
-        Annual Demand Calendar
-      </p>
-
-      {/* Quarter groups */}
-      <div className="grid grid-cols-4 gap-2">
-        {quarters.map((q) => (
-          <div key={q.label} className="flex flex-col gap-1">
-            <p className="text-[10px] font-semibold text-amber-400/60 text-center">{q.label}</p>
-            <div className="flex gap-1">
-              {q.months.map((mi) => (
-                <div
-                  key={mi}
-                  className="flex-1 rounded-md bg-amber-500/10 border border-amber-500/20 py-2 flex items-center justify-center"
-                >
-                  <span className="text-[9px] font-medium text-amber-300/70 rotate-0">{months[mi]}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {/* Legend */}
-      <div className="flex items-center gap-4 mt-3 justify-center">
-        <div className="flex items-center gap-1.5">
-          <div className="w-3 h-3 rounded-sm bg-amber-500/50 border border-amber-500/30" />
-          <span className="text-[10px] text-muted-foreground">Peak buying</span>
-        </div>
-        <div className="flex items-center gap-1.5">
-          <div className="w-3 h-3 rounded-sm bg-muted/30 border border-border/40" />
-          <span className="text-[10px] text-muted-foreground">Slow period</span>
-        </div>
-      </div>
-      <p className="text-[10px] text-muted-foreground/50 text-center mt-1">
-        Peak & slow months are detailed in the content below
-      </p>
-    </div>
-  )
-}
-
-function CommercialMetricGrid() {
-  const metrics = [
-    { label: 'Order Value', icon: '💰', hint: 'Avg order range (₹)' },
-    { label: 'Gross Margin', icon: '📈', hint: 'Best segment margin %' },
-    { label: 'Conversion', icon: '🎯', hint: 'Enquiry-to-closure rate' },
-    { label: 'Payment Terms', icon: '📅', hint: 'Days / advance / credit' },
-    { label: 'Repeat Frequency', icon: '🔁', hint: 'How often they reorder' },
-    { label: 'Capacity', icon: '🏭', hint: 'Production headroom' },
-  ]
-
-  return (
-    <div className="rounded-xl border border-green-500/15 bg-green-500/5 p-4 mb-5">
-      <p className="text-[10px] font-bold uppercase tracking-widest text-green-400/60 mb-3">
-        Commercial Snapshot
-      </p>
-      <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">
-        {metrics.map((m) => (
-          <div key={m.label} className="flex flex-col items-center gap-1 rounded-lg bg-green-500/10 border border-green-500/20 p-2.5 text-center">
-            <span className="text-lg">{m.icon}</span>
-            <p className="text-[10px] font-semibold text-green-300">{m.label}</p>
-            <p className="text-[9px] text-muted-foreground leading-tight">{m.hint}</p>
-          </div>
-        ))}
-      </div>
-      <p className="text-[10px] text-muted-foreground/50 text-center mt-3">
-        Actual figures from documents are in the content below
-      </p>
-    </div>
-  )
-}
 
 // ─── Section card ─────────────────────────────────────────────────────────────
 
@@ -332,62 +39,22 @@ function SectionCard({
   divRef: (el: HTMLDivElement | null) => void
 }) {
   const [collapsed, setCollapsed] = useState(false)
-  const Icon = cfg.icon
 
   return (
-    <div
-      ref={divRef}
-      className={cn('rounded-2xl border overflow-hidden scroll-mt-4 bg-card', cfg.cardBorder)}
-    >
-      {/* Header */}
+    <div ref={divRef} className="rounded-xl border border-border bg-card scroll-mt-4">
       <button
         onClick={() => setCollapsed((c) => !c)}
-        className={cn(
-          'w-full flex items-center gap-3 px-4 py-3.5 text-left transition-colors hover:brightness-110',
-          cfg.headerBg
-        )}
+        className="w-full flex items-center gap-3 px-4 py-3 text-left"
       >
-        {/* Accent line */}
-        <div className={cn('w-1 h-10 rounded-full shrink-0', cfg.accentBar)} />
-
-        {/* Badge */}
-        <div className={cn('w-7 h-7 rounded-lg flex items-center justify-center text-[11px] font-bold shrink-0', cfg.badgeBg, cfg.badgeText)}>
-          {cfg.num}
-        </div>
-
-        {/* Icon */}
-        <div className={cn('w-8 h-8 rounded-xl flex items-center justify-center shrink-0', cfg.iconBg)}>
-          <Icon size={15} className={cfg.iconText} />
-        </div>
-
-        {/* Title */}
-        <div className="flex-1 min-w-0">
-          <p className="text-sm font-semibold text-foreground">{cfg.title}</p>
-        </div>
-
-        {/* Collapse toggle */}
+        <span className="text-xs font-bold text-muted-foreground w-6 shrink-0">{cfg.num}.</span>
+        <span className="flex-1 text-sm font-semibold text-foreground">{cfg.title}</span>
         {collapsed
-          ? <ChevronDown size={14} className="text-muted-foreground/50 shrink-0" />
-          : <ChevronUp size={14} className="text-muted-foreground/50 shrink-0" />}
+          ? <ChevronDown size={14} className="text-muted-foreground shrink-0" />
+          : <ChevronUp size={14} className="text-muted-foreground shrink-0" />}
       </button>
 
-      {/* Body */}
       {!collapsed && (
-        <div className="px-5 py-4">
-          {/* Special visual frames */}
-          {cfg.key === 'buyer_committee' && <BuyerCommitteeTree />}
-          {cfg.key === 'sales_playbook' && <SalesFunnel />}
-          {cfg.key === 'demand_and_timing' && <DemandTimingStrip />}
-          {cfg.key === 'commercial_overview' && <CommercialMetricGrid />}
-          {cfg.key === 'watchlist_director_notes' && (
-            <div className="flex items-start gap-2.5 px-4 py-3 rounded-xl bg-red-600/10 border border-red-600/20 mb-5">
-              <AlertTriangle size={14} className="text-red-400 shrink-0 mt-0.5" />
-              <p className="text-[11px] text-red-300/80">
-                Handle with care. Share only with the SE assigned to this account.
-              </p>
-            </div>
-          )}
-
+        <div className="px-5 pb-4 pt-1 border-t border-border">
           <MarkdownRenderer
             className="prose prose-sm max-w-none
               [--tw-prose-body:hsl(var(--foreground))]
@@ -422,7 +89,6 @@ const SECTION_KEYS = [
 
 function parseProfileMarkdown(markdown: string): Record<string, string> {
   const result: Record<string, string> = {}
-  // Normalize line endings
   const lines = markdown.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n')
   let currentKey: string | null = null
   const buf: string[] = []
@@ -436,7 +102,6 @@ function parseProfileMarkdown(markdown: string): Record<string, string> {
   }
 
   for (const line of lines) {
-    // Match "## Section N" regardless of what follows (handles any dash style or no dash)
     const m = line.match(/^##\s+Section\s+(\d+)/)
     if (m) {
       flush()
@@ -468,16 +133,12 @@ export function ClientProfileView({ contentJson, contentMarkdown }: ClientProfil
   })
 
   if (activeSections.length === 0) {
-    // Old-format profile: no matching sections — render markdown with table support
     if (!contentMarkdown) return null
     return (
       <div className="space-y-4">
-        <div className="flex items-center gap-2.5 px-4 py-3 rounded-xl bg-amber-500/10 border border-amber-500/20">
-          <span className="text-amber-400 text-base">✦</span>
-          <p className="text-xs text-amber-300">
-            This profile was generated with an older format. Click <strong>Regenerate</strong> to get the new visual layout with section cards and diagrams.
-          </p>
-        </div>
+        <p className="text-xs text-muted-foreground px-1">
+          This profile was generated with an older format. Click <strong>Regenerate</strong> to get the updated layout.
+        </p>
         <MarkdownRenderer
           className="prose prose-sm max-w-none
             prose-headings:text-foreground prose-headings:font-semibold
@@ -500,38 +161,21 @@ export function ClientProfileView({ contentJson, contentMarkdown }: ClientProfil
   }
 
   return (
-    <div className="space-y-4">
-      {/* ── Quick navigation grid ── */}
-      <div className="rounded-2xl border border-border/50 bg-muted/20 p-3">
-        <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/50 mb-2.5 px-1">
-          Jump to section
-        </p>
-        <div className="grid grid-cols-3 gap-1.5 sm:grid-cols-4 lg:grid-cols-6">
-          {activeSections.map((s) => {
-            const Icon = s.icon
-            return (
-              <button
-                key={s.key}
-                onClick={() => scrollTo(s.key)}
-                className={cn(
-                  'flex items-center gap-2 px-2.5 py-2 rounded-xl border text-left transition-all hover:scale-[1.02]',
-                  s.navBg, s.navBorder
-                )}
-              >
-                <div className={cn('w-5 h-5 rounded-md flex items-center justify-center shrink-0', s.iconBg)}>
-                  <Icon size={11} className={s.iconText} />
-                </div>
-                <div className="min-w-0">
-                  <p className={cn('text-[10px] font-semibold truncate', s.navText)}>{s.shortTitle}</p>
-                  <p className="text-[9px] text-muted-foreground/60">{s.num}/11</p>
-                </div>
-              </button>
-            )
-          })}
-        </div>
+    <div className="space-y-3">
+      {/* Quick navigation */}
+      <div className="flex flex-wrap gap-1.5 pb-2">
+        {activeSections.map((s) => (
+          <button
+            key={s.key}
+            onClick={() => scrollTo(s.key)}
+            className="text-[11px] px-2.5 py-1 rounded-md border border-border bg-muted/40 text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+          >
+            {s.num}. {s.shortTitle}
+          </button>
+        ))}
       </div>
 
-      {/* ── Section cards ── */}
+      {/* Section cards */}
       {activeSections.map((cfg) => (
         <SectionCard
           key={cfg.key}
