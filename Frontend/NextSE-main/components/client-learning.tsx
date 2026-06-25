@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import {
   BookOpen, ChevronRight, CheckCircle2, ExternalLink, FileText, FlipHorizontal, Megaphone, Play, X,
 } from 'lucide-react'
-import ReactMarkdown from 'react-markdown'
+import { MarkdownRenderer } from '@/components/markdown-renderer'
 
 import {
   getEngineerProgress, getSalesPitch, getStudyMaterial, updateEngineerProgress,
@@ -329,8 +329,8 @@ export function ClientLearning({ clientId, clientName }: ClientLearningProps) {
             <h2 className="text-base font-semibold text-foreground">Sample Sales Pitch</h2>
           </div>
           {salesPitch?.content_markdown ? (
-            <div className="bg-card border border-border rounded-xl p-4 prose prose-sm max-w-none max-h-64 overflow-auto text-sm text-foreground">
-              <ReactMarkdown>{salesPitch.content_markdown}</ReactMarkdown>
+            <div className="bg-card border border-border rounded-xl p-4 max-h-64 overflow-auto text-sm text-foreground">
+              <MarkdownRenderer className="prose prose-sm max-w-none">{salesPitch.content_markdown}</MarkdownRenderer>
             </div>
           ) : (
             <p className="text-sm text-muted-foreground">Not generated yet.</p>
