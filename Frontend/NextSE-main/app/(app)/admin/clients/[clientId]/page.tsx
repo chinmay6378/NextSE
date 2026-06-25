@@ -34,6 +34,7 @@ import {
 } from 'lucide-react'
 import { use, useRef, useState } from 'react'
 import { MarkdownRenderer } from '@/components/markdown-renderer'
+import { ClientProfileView } from '@/components/client-profile-view'
 import { toast } from 'sonner'
 
 import { ApiError } from '@/lib/api/client'
@@ -765,21 +766,26 @@ export default function ClientDetailPage({ params }: { params: Promise<{ clientI
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                   >
-                    <MarkdownRenderer
-                      className="prose prose-sm max-w-none
-                        prose-headings:text-foreground prose-headings:font-semibold
-                        prose-p:text-muted-foreground prose-p:leading-relaxed
-                        prose-li:text-muted-foreground
-                        prose-strong:text-foreground prose-strong:font-semibold
-                        prose-a:text-primary prose-a:no-underline hover:prose-a:underline
-                        prose-h1:text-xl prose-h2:text-lg prose-h3:text-base
-                        prose-ul:space-y-1 prose-ol:space-y-1
-                        [&>*:first-child]:mt-0"
-                    >
-                      {tab === 'study_material'
-                        ? currentSection.content_markdown.replace(/\n## Video Resources[\s\S]*$/, '')
-                        : currentSection.content_markdown}
-                    </MarkdownRenderer>
+                    {/* Rich visual layout for profile; plain markdown for other tabs */}
+                    {tab === 'profile' && currentSection.content_json ? (
+                      <ClientProfileView contentJson={currentSection.content_json as Record<string, unknown>} />
+                    ) : (
+                      <MarkdownRenderer
+                        className="prose prose-sm max-w-none
+                          prose-headings:text-foreground prose-headings:font-semibold
+                          prose-p:text-muted-foreground prose-p:leading-relaxed
+                          prose-li:text-muted-foreground
+                          prose-strong:text-foreground prose-strong:font-semibold
+                          prose-a:text-primary prose-a:no-underline hover:prose-a:underline
+                          prose-h1:text-xl prose-h2:text-lg prose-h3:text-base
+                          prose-ul:space-y-1 prose-ol:space-y-1
+                          [&>*:first-child]:mt-0"
+                      >
+                        {tab === 'study_material'
+                          ? currentSection.content_markdown.replace(/\n## Video Resources[\s\S]*$/, '')
+                          : currentSection.content_markdown}
+                      </MarkdownRenderer>
+                    )}
                   </motion.div>
 
                   {tab === 'study_material' && (() => {
