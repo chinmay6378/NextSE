@@ -17,7 +17,8 @@ from app.schemas.testing import (
     TestRequestCreate,
     TestRequestOut,
 )
-from app.services.mcq_generation import GenerationFailedError, get_or_generate_mcq_set
+from app.services.mcq_generation import get_or_generate_mcq_set
+from app.services.openai_client import GenerationFailedError
 
 router = APIRouter(tags=["tests"])
 
