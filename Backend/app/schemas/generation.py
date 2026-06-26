@@ -264,6 +264,33 @@ class GeneratedClientProfile(BaseModel):
         "Return empty string if nothing relevant is found. No heading or filler text."
     ))
 
+    compelling_reasons_to_buy: str = Field(description=(
+        "Section 12 — Compelling Reasons to Buy. Answer: WHY should a prospect buy from this client? "
+        "Write from the BUYER's perspective using Care DNI + Voss loss-aversion framing. "
+        "Fields: "
+        "Current Pain (what the prospect suffers TODAY without this solution — be specific), "
+        "DNI Cost / Cost of Doing Nothing (R0): quantify in Time, Money, or People terms — "
+        "  'Every month without this, you are losing...', "
+        "Top 5 Reasons to Buy Now (each in buyer language, not product specs — what they GAIN or STOP LOSING), "
+        "The Unique Differentiator (what this client does that NO competitor does — one crisp sentence), "
+        "The 30-Second Business Case (a 3-line ROI argument the SE can say out loud before the demo), "
+        "Loss-Framing Statement (Voss): 'What happens to [their business outcome] if this problem is not solved in the next 90 days?', "
+        "Proof Anchor (one specific result, case study, or metric from documents that makes the business case concrete). "
+        "CRITICAL: Ground every point in document data. No generic statements. No placeholders."
+    ))
+
+    meeting_prep_guide: str = Field(description=(
+        "Section 13 — Meeting Prep Guide. A field-ready briefing the SE reads in the car before walking in. "
+        "Fields: "
+        "Opening Line (the exact first sentence the SE says — not a pitch, references something specific about the client), "
+        "Accusation Audit to Deliver (2-3 preemptive labels to say OUT LOUD: 'It seems like...'), "
+        "3 Must-Ask Discovery Questions (calibrated What/How questions most likely to unlock the deal for this client), "
+        "Landmines to Avoid (topics, competitors, or sensitivities that could derail the meeting), "
+        "What Success Looks Like (what the SE should walk out with — specific commitment, not just 'good vibes'), "
+        "Closing Move (the exact Voss How-question to end the meeting with — drives next step). "
+        "CRITICAL: Make every line specific to THIS client. No generic sales advice."
+    ))
+
     # ── Structured actionable data ────────────────────────────────────────────
 
     product_fab_chains: list[ProductFAB] = Field(description=(

@@ -170,8 +170,30 @@ Fields: Top Priorities for Next 12 Months, Segments to Grow (where MOTM can add 
 Section 11 — Watchlist / Director Notes
 Red flags, sensitivities, escalation history, complaint patterns, special handling instructions, SE-level cautions. Apply Voss Black Swan lens: note if client seems Ill-Informed (needs education), Constrained (hidden blockers/budget freeze), or has Other Interests (hidden agenda driving behavior). If nothing relevant is found in the documents, return an empty string — do not write any heading, label, or filler text.
 
+Section 12 — Compelling Reasons to Buy
+Answer WHY a prospect MUST buy from this client. Write entirely from the BUYER's perspective using Care DNI + Voss loss-aversion. This is the section the SE reads to build conviction before any meeting.
+Fields:
+• Current Pain — what the prospect suffers TODAY without this solution (specific, not generic)
+• DNI Cost / Cost of Doing Nothing (R0) — quantify in Time, Money, or People: "Every month without this, you are losing..."
+• Top 5 Reasons to Buy Now — each in buyer language (what they GAIN or STOP LOSING), not product specs
+• The Unique Differentiator — one crisp sentence: what this client does that NO competitor does
+• The 30-Second Business Case — 3 lines the SE says out loud before the demo: Problem → Solution → Result
+• Loss-Framing Statement (Voss): "What happens to [their business outcome] if this is not resolved in the next 90 days?"
+• Proof Anchor — one specific result, case study, or metric from the documents that makes the business case concrete
+CRITICAL: Every point must be grounded in document data. No generic statements. No placeholders.
+
+Section 13 — Meeting Prep Guide
+A field-ready briefing card the SE reads in the car before walking in. Make every line specific to THIS client's product and buyer context.
+Fields:
+• Opening Line — the exact first sentence the SE says (references something specific about the client — not a pitch)
+• Accusation Audit to Deliver — 2-3 labels to say OUT LOUD: "It seems like..." (disarm resistance before it forms)
+• 3 Must-Ask Discovery Questions — the calibrated What/How questions most likely to unlock this deal
+• Landmines to Avoid — topics, competitors, or sensitivities that could derail the meeting
+• What Success Looks Like — what the SE must walk out with (a specific commitment, not "good vibes")
+• Closing Move — the exact How-question to end the meeting with and drive a clear next step
+
 ═══════════════════════════════════════
-STRUCTURED FIELDS (fill in addition to the 11 narrative sections)
+STRUCTURED FIELDS (fill in addition to the 13 narrative sections)
 ═══════════════════════════════════════
 
 product_fab_chains — One entry per product/service mentioned in documents.

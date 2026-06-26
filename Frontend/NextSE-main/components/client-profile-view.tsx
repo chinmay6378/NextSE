@@ -65,7 +65,9 @@ const SECTIONS: SectionCfg[] = [
   { key: 'commercial_overview',      num: 8,  title: 'Commercial Overview',       shortTitle: 'Commercial' },
   { key: 'credibility_assets',       num: 9,  title: 'Credibility Assets',        shortTitle: 'Credibility'},
   { key: 'strategy_and_focus',       num: 10, title: 'Strategy & Focus',          shortTitle: 'Strategy'   },
-  { key: 'watchlist_director_notes', num: 11, title: 'Watchlist / Director Notes',shortTitle: 'Watchlist'  },
+  { key: 'watchlist_director_notes',   num: 11, title: 'Watchlist / Director Notes', shortTitle: 'Watchlist' },
+  { key: 'compelling_reasons_to_buy', num: 12, title: 'Compelling Reasons to Buy',  shortTitle: 'Why Buy'   },
+  { key: 'meeting_prep_guide',        num: 13, title: 'Meeting Prep Guide',          shortTitle: 'Prep Guide'},
 ]
 
 // ─── Collapsible wrapper ──────────────────────────────────────────────────────
@@ -432,13 +434,13 @@ export function ClientProfileView({ contentJson, contentMarkdown }: ClientProfil
 
   // Build nav pills: narrative sections + structured sections that have data
   const structuredNavItems = [
-    fabChains.length > 0        && { key: 'fab',         num: 12, shortTitle: 'FAB Chains'  },
-    stakeholderMap.length > 0   && { key: 'stakeholders', num: 13, shortTitle: 'Stakeholders'},
-    discoveryQuestions.length > 0 && { key: 'discovery',  num: 14, shortTitle: 'Discovery'  },
-    objectionCards.length > 0   && { key: 'objections',   num: 15, shortTitle: 'Objections' },
-    competitorEntries.length > 0 && { key: 'competitors', num: 16, shortTitle: 'Battle Cards'},
-    accusationLabels.length > 0 && { key: 'audit',        num: 17, shortTitle: 'Audit'      },
-    icpQuestions.length > 0     && { key: 'icp',          num: 18, shortTitle: 'ICP'        },
+    fabChains.length > 0          && { key: 'fab',         num: 14, shortTitle: 'FAB Chains'  },
+    stakeholderMap.length > 0     && { key: 'stakeholders', num: 15, shortTitle: 'Stakeholders'},
+    discoveryQuestions.length > 0 && { key: 'discovery',   num: 16, shortTitle: 'Discovery'   },
+    objectionCards.length > 0     && { key: 'objections',  num: 17, shortTitle: 'Objections'  },
+    competitorEntries.length > 0  && { key: 'competitors', num: 18, shortTitle: 'Battle Cards' },
+    accusationLabels.length > 0   && { key: 'audit',       num: 19, shortTitle: 'Audit'       },
+    icpQuestions.length > 0       && { key: 'icp',         num: 20, shortTitle: 'ICP'         },
   ].filter(Boolean) as { key: string; num: number; shortTitle: string }[]
 
   return (
@@ -479,49 +481,49 @@ export function ClientProfileView({ contentJson, contentMarkdown }: ClientProfil
       {fabChains.length > 0 && (
         <FABChainsCard
           items={fabChains}
-          num={12}
+          num={14}
           divRef={(el) => { sectionRefs.current['fab'] = el }}
         />
       )}
       {stakeholderMap.length > 0 && (
         <StakeholderMapCard
           items={stakeholderMap}
-          num={13}
+          num={15}
           divRef={(el) => { sectionRefs.current['stakeholders'] = el }}
         />
       )}
       {discoveryQuestions.length > 0 && (
         <DiscoveryQuestionsCard
           items={discoveryQuestions}
-          num={14}
+          num={16}
           divRef={(el) => { sectionRefs.current['discovery'] = el }}
         />
       )}
       {objectionCards.length > 0 && (
         <ObjectionBattleCardsCard
           items={objectionCards}
-          num={15}
+          num={17}
           divRef={(el) => { sectionRefs.current['objections'] = el }}
         />
       )}
       {competitorEntries.length > 0 && (
         <CompetitorEntriesCard
           items={competitorEntries}
-          num={16}
+          num={18}
           divRef={(el) => { sectionRefs.current['competitors'] = el }}
         />
       )}
       {accusationLabels.length > 0 && (
         <AccusationAuditCard
           items={accusationLabels}
-          num={17}
+          num={19}
           divRef={(el) => { sectionRefs.current['audit'] = el }}
         />
       )}
       {icpQuestions.length > 0 && (
         <ICPQualifierCard
           items={icpQuestions}
-          num={18}
+          num={20}
           divRef={(el) => { sectionRefs.current['icp'] = el }}
         />
       )}
