@@ -15,11 +15,11 @@ import { endVoiceSession, startVoiceSession, submitVoiceTurn } from '@/lib/api/v
 import type { VoiceScoreOut, VoiceTranscriptEntry } from '@/lib/api/types'
 
 const TURN_SECONDS = 120
-const SILENCE_THRESHOLD = 0.025     // raised — less sensitive to ambient noise
-const SILENCE_GRACE_MS = 3500       // 3.5 s of silence before auto-submit
-const MIN_RECORDING_MS = 3000       // must speak for ≥3 s before silence fires
-const INTERRUPT_THRESHOLD = 0.05    // mic RMS level that counts as speaking
-const INTERRUPT_FRAMES = 5          // consecutive loud frames before interrupting AI
+const SILENCE_THRESHOLD = 0.025
+const SILENCE_GRACE_MS = 1000       // was 3500 — biggest latency cut
+const MIN_RECORDING_MS = 800        // was 3000
+const INTERRUPT_THRESHOLD = 0.04
+const INTERRUPT_DURATION_MS = 180   // sustained speech ms before barge-in
 
 interface Props {
   testRequestId: string
@@ -29,9 +29,6 @@ interface Props {
 
 type Phase = 'starting' | 'ai-speaking' | 'listening' | 'processing' | 'ending' | 'scored'
 
-// Encode raw PCM chunks as a standard WAV blob (RIFF / PCM 16-bit mono).
-// WAV has a trivial 44-byte header — no codec/container weirdness, universally
-// accepted by OpenAI and Groq Whisper.
 function encodeWAV(chunks: Float32Array[], sampleRate: number): Blob {
   const totalSamples = chunks.reduce((n, c) => n + c.length, 0)
   const buf = new ArrayBuffer(44 + totalSamples * 2)
@@ -39,19 +36,12 @@ function encodeWAV(chunks: Float32Array[], sampleRate: number): Blob {
   const w = (o: number, s: string) =>
     [...s].forEach((c, i) => v.setUint8(o + i, c.charCodeAt(0)))
 
-  w(0, 'RIFF')
-  v.setUint32(4, 36 + totalSamples * 2, true)
-  w(8, 'WAVE')
-  w(12, 'fmt ')
-  v.setUint32(16, 16, true)
-  v.setUint16(20, 1, true)               // PCM
-  v.setUint16(22, 1, true)               // Mono
-  v.setUint32(24, sampleRate, true)
-  v.setUint32(28, sampleRate * 2, true)  // ByteRate
-  v.setUint16(32, 2, true)               // BlockAlign
-  v.setUint16(34, 16, true)              // BitsPerSample
-  w(36, 'data')
-  v.setUint32(40, totalSamples * 2, true)
+  w(0, 'RIFF'); v.setUint32(4, 36 + totalSamples * 2, true)
+  w(8, 'WAVE'); w(12, 'fmt ')
+  v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true)
+  v.setUint32(24, sampleRate, true); v.setUint32(28, sampleRate * 2, true)
+  v.setUint16(32, 2, true); v.setUint16(34, 16, true)
+  w(36, 'data'); v.setUint32(40, totalSamples * 2, true)
 
   let o = 44
   for (const chunk of chunks) {
@@ -64,9 +54,7 @@ function encodeWAV(chunks: Float32Array[], sampleRate: number): Blob {
   return new Blob([buf], { type: 'audio/wav' })
 }
 
-// ---------------------------------------------------------------------------
-// AI Avatar
-// ---------------------------------------------------------------------------
+// ─── AI Avatar ────────────────────────────────────────────────────────────────
 
 function AIAvatar({ phase, audioLevel }: { phase: Phase; audioLevel: number }) {
   const isSpeaking = phase === 'ai-speaking'
@@ -151,9 +139,7 @@ function AIAvatar({ phase, audioLevel }: { phase: Phase; audioLevel: number }) {
   )
 }
 
-// ---------------------------------------------------------------------------
-// Main component
-// ---------------------------------------------------------------------------
+// ─── Main component ───────────────────────────────────────────────────────────
 
 export function VoiceAssessment({ testRequestId, clientName, onDone }: Props) {
   const [phase, setPhase] = useState<Phase>('starting')
@@ -170,18 +156,24 @@ export function VoiceAssessment({ testRequestId, clientName, onDone }: Props) {
   const bottomRef = useRef<HTMLDivElement>(null)
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const animFrameRef = useRef<number | null>(null)
-  const audioCtxRef = useRef<AudioContext | null>(null)
 
-  // PCM recording refs (replace MediaRecorder)
+  // Persistent mic infrastructure — created once per session, not per turn
+  const audioCtxRef = useRef<AudioContext | null>(null)
   const streamRef = useRef<MediaStream | null>(null)
-  const pcmChunksRef = useRef<Float32Array[]>([])
   const processorRef = useRef<ScriptProcessorNode | null>(null)
+  const analyserRef = useRef<AnalyserNode | null>(null)
   const sampleRateRef = useRef<number>(48000)
+
+  const pcmChunksRef = useRef<Float32Array[]>([])
   const recordingStartRef = useRef<number>(0)
+  const submittingRef = useRef(false)
+
+  // Interrupt detection
+  const interruptRafRef = useRef<number | null>(null)
+  const interruptLoudSinceRef = useRef<number | null>(null)
 
   const startListeningRef = useRef<() => Promise<void>>(() => Promise.resolve())
   const stopAndSendRef = useRef<() => Promise<void>>(() => Promise.resolve())
-  const submittingRef = useRef(false)
 
   const setPhaseSync = useCallback((p: Phase) => {
     phaseRef.current = p
@@ -200,75 +192,77 @@ export function VoiceAssessment({ testRequestId, clientName, onDone }: Props) {
     streamRef.current = null
     audioCtxRef.current?.close().catch(() => {})
     audioCtxRef.current = null
+    analyserRef.current = null
   }, [])
 
-  const playAudio = (b64: string): Promise<void> =>
-    new Promise((resolve) => {
-      let settled = false
-      const done = () => { if (!settled) { settled = true; resolve() } }
+  const stopInterruptDetection = useCallback(() => {
+    if (interruptRafRef.current !== null) {
+      cancelAnimationFrame(interruptRafRef.current)
+      interruptRafRef.current = null
+    }
+    interruptLoudSinceRef.current = null
+  }, [])
 
+  const startInterruptDetection = useCallback(() => {
+    const analyser = analyserRef.current
+    if (!analyser) return
+    stopInterruptDetection()
+
+    const data = new Uint8Array(analyser.frequencyBinCount)
+
+    const detect = () => {
+      if (phaseRef.current !== 'ai-speaking') return
+
+      analyser.getByteTimeDomainData(data)
+      let sum = 0
+      for (let i = 0; i < data.length; i++) {
+        const v = (data[i] - 128) / 128
+        sum += v * v
+      }
+      const rms = Math.sqrt(sum / data.length)
+
+      if (rms > INTERRUPT_THRESHOLD) {
+        if (!interruptLoudSinceRef.current) {
+          interruptLoudSinceRef.current = Date.now()
+        } else if (Date.now() - interruptLoudSinceRef.current > INTERRUPT_DURATION_MS) {
+          stopInterruptDetection()
+          audioRef.current?.pause()
+          submittingRef.current = false
+          setPhaseSync('listening')
+          void startListeningRef.current()
+          return
+        }
+      } else {
+        interruptLoudSinceRef.current = null
+      }
+
+      interruptRafRef.current = requestAnimationFrame(detect)
+    }
+
+    interruptRafRef.current = requestAnimationFrame(detect)
+  }, [stopInterruptDetection, setPhaseSync])
+
+  const playAudio = useCallback((b64: string): Promise<void> =>
+    new Promise((resolve) => {
       const el = new Audio(`data:audio/mp3;base64,${b64}`)
       audioRef.current = el
-      el.onended = done
-      el.onerror = done
+      el.onended = () => resolve()
+      el.onerror = () => resolve()
       el.onpause = () => {
-        if (phaseRef.current === 'ending' || phaseRef.current === 'scored') done()
+        if (phaseRef.current === 'ending' || phaseRef.current === 'scored') resolve()
       }
-      el.play().catch(done)
-
-      // After 400 ms (avoids speaker-bleed false trigger), monitor mic for interruption.
-      // If candidate speaks loud enough for INTERRUPT_FRAMES consecutive animation frames,
-      // stop the AI audio immediately and resolve so startListening() runs next.
-      setTimeout(async () => {
-        if (settled || phaseRef.current !== 'ai-speaking') return
-        let interruptCtx: AudioContext | null = null
-        let interruptFrame: number | null = null
-        let interruptStream: MediaStream | null = null
-        const cleanup = () => {
-          if (interruptFrame !== null) { cancelAnimationFrame(interruptFrame); interruptFrame = null }
-          interruptStream?.getTracks().forEach(t => t.stop())
-          interruptStream = null
-          interruptCtx?.close().catch(() => {})
-          interruptCtx = null
-        }
-        try {
-          interruptStream = await navigator.mediaDevices.getUserMedia({ audio: true })
-          if (settled) { cleanup(); return }
-          interruptCtx = new AudioContext()
-          const src = interruptCtx.createMediaStreamSource(interruptStream)
-          const analyser = interruptCtx.createAnalyser()
-          analyser.fftSize = 256
-          src.connect(analyser)
-          const buf = new Uint8Array(analyser.frequencyBinCount)
-          let hotFrames = 0
-          const tick = () => {
-            if (settled || phaseRef.current !== 'ai-speaking') { cleanup(); return }
-            analyser.getByteTimeDomainData(buf)
-            let sum = 0
-            for (let i = 0; i < buf.length; i++) { const v = (buf[i] - 128) / 128; sum += v * v }
-            const rms = Math.sqrt(sum / buf.length)
-            if (rms > INTERRUPT_THRESHOLD) {
-              hotFrames++
-              if (hotFrames >= INTERRUPT_FRAMES) { cleanup(); el.pause(); done(); return }
-            } else {
-              hotFrames = 0
-            }
-            interruptFrame = requestAnimationFrame(tick)
-          }
-          interruptFrame = requestAnimationFrame(tick)
-        } catch { /* mic unavailable — proceed without interruption */ }
-      }, 400)
-    })
+      el.play().catch(() => resolve())
+    }), [])
 
   const stopAndSend = useCallback(async () => {
     if (!sessionIdRef.current) return
-    if (submittingRef.current) return   // guard: only one turn in-flight at a time
+    if (submittingRef.current) return
     submittingRef.current = true
     clearTimers()
     setPhaseSync('processing')
     setAudioLevel(0)
 
-    stopRecording()
+    // Do NOT stop the mic — keep AudioContext alive for the next turn
 
     const pcmChunks = [...pcmChunksRef.current]
     pcmChunksRef.current = []
@@ -291,9 +285,13 @@ export function VoiceAssessment({ testRequestId, clientName, onDone }: Props) {
       setError(null)
       setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: 'smooth' }), 80)
 
-      if (result.ai_audio_b64) {
+      if (result.ai_audio_b64 && phaseRef.current !== 'ending' && phaseRef.current !== 'scored') {
         setPhaseSync('ai-speaking')
+        // Brief drain to avoid AI audio triggering interrupt on its own echo
+        await new Promise(r => setTimeout(r, 80))
+        startInterruptDetection()
         await playAudio(result.ai_audio_b64)
+        stopInterruptDetection()
       }
 
       submittingRef.current = false
@@ -308,87 +306,101 @@ export function VoiceAssessment({ testRequestId, clientName, onDone }: Props) {
         await startListeningRef.current()
       }
     }
-  }, [clearTimers, setPhaseSync, stopRecording])
+  }, [clearTimers, setPhaseSync, playAudio, startInterruptDetection, stopInterruptDetection])
 
   const startListening = useCallback(async () => {
     if (phaseRef.current === 'ending' || phaseRef.current === 'scored') return
     setError(null)
-    pcmChunksRef.current = []
-    recordingStartRef.current = Date.now()
 
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
-      streamRef.current = stream
+    // Create mic infrastructure only once per session
+    if (!streamRef.current) {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          audio: { echoCancellation: true, noiseSuppression: true },
+        })
+        streamRef.current = stream
 
-      const ctx = new AudioContext()
-      audioCtxRef.current = ctx
-      sampleRateRef.current = ctx.sampleRate
-      const source = ctx.createMediaStreamSource(stream)
+        const ctx = new AudioContext()
+        audioCtxRef.current = ctx
+        sampleRateRef.current = ctx.sampleRate
+        const source = ctx.createMediaStreamSource(stream)
 
-      // Analyser for silence detection + audio level visualisation
-      const analyser = ctx.createAnalyser()
-      analyser.fftSize = 256
-      source.connect(analyser)
+        const analyser = ctx.createAnalyser()
+        analyser.fftSize = 256
+        source.connect(analyser)
+        analyserRef.current = analyser
 
-      // ScriptProcessor captures raw PCM — avoids WebM container/codec issues
-      const processor = ctx.createScriptProcessor(4096, 1, 1)
-      processorRef.current = processor
-      processor.onaudioprocess = (e) => {
-        if (phaseRef.current === 'listening') {
-          pcmChunksRef.current.push(new Float32Array(e.inputBuffer.getChannelData(0)))
-        }
-      }
-      source.connect(processor)
-      processor.connect(ctx.destination)
-
-      const data = new Uint8Array(analyser.frequencyBinCount)
-      let silentSince: number | null = null
-      let hasSpoken = false
-
-      const tick = () => {
-        if (phaseRef.current !== 'listening') return
-        analyser.getByteTimeDomainData(data)
-        let sum = 0
-        for (let i = 0; i < data.length; i++) {
-          const vv = (data[i] - 128) / 128
-          sum += vv * vv
-        }
-        const rms = Math.sqrt(sum / data.length)
-        setAudioLevel(Math.min(rms * 5, 1))
-
-        if (rms >= SILENCE_THRESHOLD) {
-          hasSpoken = true
-          silentSince = null
-        } else if (hasSpoken) {
-          if (silentSince === null) silentSince = Date.now()
-          else if (
-            Date.now() - silentSince > SILENCE_GRACE_MS &&
-            Date.now() - recordingStartRef.current > MIN_RECORDING_MS
-          ) {
-            stopAndSendRef.current()
-            return
+        const processor = ctx.createScriptProcessor(4096, 1, 1)
+        processorRef.current = processor
+        processor.onaudioprocess = (e) => {
+          if (phaseRef.current === 'listening') {
+            pcmChunksRef.current.push(new Float32Array(e.inputBuffer.getChannelData(0)))
           }
         }
-        animFrameRef.current = requestAnimationFrame(tick)
+        // Silent gain node — processor must be connected to destination to fire
+        const silentGain = ctx.createGain()
+        silentGain.gain.value = 0
+        source.connect(processor)
+        processor.connect(silentGain)
+        silentGain.connect(ctx.destination)
+      } catch {
+        setError('Microphone access denied — please allow microphone and refresh.')
+        return
+      }
+    }
+
+    // Brief drain to discard room echo from AI audio
+    await new Promise(r => setTimeout(r, 80))
+    if (phaseRef.current === 'ending' || phaseRef.current === 'scored') return
+
+    pcmChunksRef.current = []
+    recordingStartRef.current = Date.now()
+    setPhaseSync('listening')
+
+    const analyser = analyserRef.current!
+    const data = new Uint8Array(analyser.frequencyBinCount)
+    let silentSince: number | null = null
+    let hasSpoken = false
+
+    const tick = () => {
+      if (phaseRef.current !== 'listening') return
+      analyser.getByteTimeDomainData(data)
+      let sum = 0
+      for (let i = 0; i < data.length; i++) {
+        const vv = (data[i] - 128) / 128
+        sum += vv * vv
+      }
+      const rms = Math.sqrt(sum / data.length)
+      setAudioLevel(Math.min(rms * 5, 1))
+
+      if (rms >= SILENCE_THRESHOLD) {
+        hasSpoken = true
+        silentSince = null
+      } else if (hasSpoken) {
+        if (silentSince === null) silentSince = Date.now()
+        else if (
+          Date.now() - silentSince > SILENCE_GRACE_MS &&
+          Date.now() - recordingStartRef.current > MIN_RECORDING_MS
+        ) {
+          void stopAndSendRef.current()
+          return
+        }
       }
       animFrameRef.current = requestAnimationFrame(tick)
-
-      setTimeLeft(TURN_SECONDS)
-      setPhaseSync('listening')
-
-      let remaining = TURN_SECONDS
-      timerRef.current = setInterval(() => {
-        remaining -= 1
-        setTimeLeft(remaining)
-        if (remaining <= 0) {
-          clearInterval(timerRef.current!)
-          timerRef.current = null
-          stopAndSendRef.current()
-        }
-      }, 1000)
-    } catch {
-      setError('Microphone access denied — please allow microphone and refresh.')
     }
+    animFrameRef.current = requestAnimationFrame(tick)
+
+    setTimeLeft(TURN_SECONDS)
+    let remaining = TURN_SECONDS
+    timerRef.current = setInterval(() => {
+      remaining -= 1
+      setTimeLeft(remaining)
+      if (remaining <= 0) {
+        clearInterval(timerRef.current!)
+        timerRef.current = null
+        void stopAndSendRef.current()
+      }
+    }, 1000)
   }, [setPhaseSync])
 
   useEffect(() => { stopAndSendRef.current = stopAndSend }, [stopAndSend])
@@ -419,7 +431,10 @@ export function VoiceAssessment({ testRequestId, clientName, onDone }: Props) {
       })
 
     return () => {
+      phaseRef.current = 'ending'
+      submittingRef.current = false
       clearTimers()
+      if (interruptRafRef.current !== null) cancelAnimationFrame(interruptRafRef.current)
       audioRef.current?.pause()
       processorRef.current?.disconnect()
       streamRef.current?.getTracks().forEach(t => t.stop())
@@ -431,7 +446,7 @@ export function VoiceAssessment({ testRequestId, clientName, onDone }: Props) {
   const handleEnd = async () => {
     setPhaseSync('ending')
     clearTimers()
-    if (animFrameRef.current) { cancelAnimationFrame(animFrameRef.current); animFrameRef.current = null }
+    stopInterruptDetection()
     audioRef.current?.pause()
     stopRecording()
     pcmChunksRef.current = []
@@ -496,11 +511,18 @@ export function VoiceAssessment({ testRequestId, clientName, onDone }: Props) {
             </motion.div>
           )}
           {phase === 'processing' && (
-            <motion.p key="processing" initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
-              className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Loader2 size={14} className="animate-spin" />
-              Processing your pitch…
-            </motion.p>
+            <motion.div key="processing" initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
+              className="flex items-center gap-2">
+              <motion.span className="inline-block w-1.5 h-1.5 rounded-full bg-violet-500"
+                animate={{ scale: [1, 1.4, 1], opacity: [0.6, 1, 0.6] }}
+                transition={{ duration: 0.8, repeat: Infinity, delay: 0 }} />
+              <motion.span className="inline-block w-1.5 h-1.5 rounded-full bg-violet-500"
+                animate={{ scale: [1, 1.4, 1], opacity: [0.6, 1, 0.6] }}
+                transition={{ duration: 0.8, repeat: Infinity, delay: 0.2 }} />
+              <motion.span className="inline-block w-1.5 h-1.5 rounded-full bg-violet-500"
+                animate={{ scale: [1, 1.4, 1], opacity: [0.6, 1, 0.6] }}
+                transition={{ duration: 0.8, repeat: Infinity, delay: 0.4 }} />
+            </motion.div>
           )}
           {phase === 'ending' && (
             <motion.p key="ending" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
@@ -584,9 +606,7 @@ export function VoiceAssessment({ testRequestId, clientName, onDone }: Props) {
   )
 }
 
-// ---------------------------------------------------------------------------
-// Score screen
-// ---------------------------------------------------------------------------
+// ─── Score screen ─────────────────────────────────────────────────────────────
 
 function ScoreScreen({ score, onDone }: { score: VoiceScoreOut; onDone: () => void }) {
   const commColor =
@@ -612,6 +632,7 @@ function ScoreScreen({ score, onDone }: { score: VoiceScoreOut; onDone: () => vo
         <CheckCircle2 size={15} className="text-emerald-600" />
         Both stages complete — assessment finished!
       </motion.div>
+
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -667,9 +688,7 @@ function ScoreScreen({ score, onDone }: { score: VoiceScoreOut; onDone: () => vo
             <ul className="space-y-2">
               {score.strengths.map((s, i) => (
                 <li key={i} className="flex items-start gap-2 text-sm text-foreground">
-                  <span className="w-4 h-4 rounded-full bg-emerald-100 flex items-center justify-center shrink-0 mt-0.5 text-emerald-600 text-[10px] font-bold">
-                    ✓
-                  </span>
+                  <span className="w-4 h-4 rounded-full bg-emerald-100 flex items-center justify-center shrink-0 mt-0.5 text-emerald-600 text-[10px] font-bold">✓</span>
                   {s}
                 </li>
               ))}
@@ -687,9 +706,7 @@ function ScoreScreen({ score, onDone }: { score: VoiceScoreOut; onDone: () => vo
             <ul className="space-y-2">
               {score.improvements.map((s, i) => (
                 <li key={i} className="flex items-start gap-2 text-sm text-foreground">
-                  <span className="w-4 h-4 rounded-full bg-amber-100 flex items-center justify-center shrink-0 mt-0.5 text-amber-600 text-[10px] font-bold">
-                    →
-                  </span>
+                  <span className="w-4 h-4 rounded-full bg-amber-100 flex items-center justify-center shrink-0 mt-0.5 text-amber-600 text-[10px] font-bold">→</span>
                   {s}
                 </li>
               ))}
