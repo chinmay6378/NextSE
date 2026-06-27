@@ -264,6 +264,37 @@ class GeneratedClientProfile(BaseModel):
         "Return empty string if nothing relevant is found. No heading or filler text."
     ))
 
+    kpi_dashboard: str = Field(description=(
+        "Section 14 — KPI Dashboard. Map this client's products/solutions to the prospect's key business metrics. "
+        "Fields: "
+        "Industry KPIs (the 5-7 metrics the prospect's business runs on — e.g. OEE %, Cost per Ton, Rejection Rate %, "
+        "Revenue per Unit, Yield %, MTBF, Working Capital Days, Capacity Utilisation %); "
+        "How This Client's Product Moves Each KPI (for each KPI: before vs. after — quantify if documents allow); "
+        "The KPI-Opening Script (one sentence the SE uses to anchor value: 'Most [industry] companies we work with "
+        "track [KPI]. What does that number look like for you right now?'); "
+        "KPI Red Flags (signals in a conversation that indicate the prospect has a serious KPI problem this client can solve); "
+        "ROI Frame (a simple before/after calculation the SE can do on a napkin — using typical industry numbers if exact "
+        "document data is unavailable, clearly labelled as 'industry typical'). "
+        "CRITICAL: Ground every KPI in the client's actual industry and product context. No generic statements."
+    ))
+
+    lead_qualification_criteria: str = Field(description=(
+        "Section 15 — Lead Qualification Criteria (LOC). A rapid scoring system to qualify or disqualify leads in the "
+        "first 10 minutes of any conversation. Structured as a field-ready checklist. "
+        "Fields: "
+        "Must-Have Criteria (5 non-negotiable criteria — a lead failing ANY of these is disqualified immediately; "
+        "  each criterion must be a yes/no question the SE can ask or observe); "
+        "Scoring Criteria (5 weighted criteria scored 0-2 each; 7+ = strong opportunity, 4-6 = qualify further, <4 = deprioritise; "
+        "  each criterion has a field-test question); "
+        "Automatic Disqualifiers (3-5 hard stop signals — situations where the SE must exit the conversation politely "
+        "  and not invest further; include a graceful exit line for each); "
+        "Minimum Viable Opportunity (minimum order size / deal value / relationship type worth pursuing); "
+        "Green Flags (3-5 signals that indicate this lead is high-priority and the SE should accelerate the cycle); "
+        "LOC One-Liner (a single sentence the SE says to quickly test if a lead is worth pursuing: "
+        "  'Most [ICP description] we work with are dealing with [pain]. Is that something you're working on right now?'). "
+        "CRITICAL: Make all criteria specific to THIS client's product and ideal customer profile. No generic BANT template."
+    ))
+
     compelling_reasons_to_buy: str = Field(description=(
         "Section 12 — Compelling Reasons to Buy. Answer: WHY should a prospect buy from this client? "
         "Write from the BUYER's perspective using Care DNI + Voss loss-aversion framing. "

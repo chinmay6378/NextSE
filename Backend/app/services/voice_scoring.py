@@ -56,6 +56,33 @@ async def synthesize_speech(text: str) -> bytes:
         return r.content
 
 
+async def synthesize_speech_stream(text: str):
+    """Stream MP3 audio chunks from ElevenLabs Flash as they arrive. Use for WebSocket TTS streaming."""
+    async with httpx.AsyncClient(timeout=20) as client:
+        async with client.stream(
+            "POST",
+            f"https://api.elevenlabs.io/v1/text-to-speech/{_ELEVENLABS_VOICE_ID}/stream",
+            params={"optimize_streaming_latency": 4, "output_format": "mp3_44100_128"},
+            headers={
+                "xi-api-key": settings.elevenlabs_api_key,
+                "Content-Type": "application/json",
+            },
+            json={
+                "text": text,
+                "model_id": "eleven_flash_v2_5",
+                "voice_settings": {
+                    "stability": 0.4,
+                    "similarity_boost": 0.75,
+                    "speed": 1.0,
+                },
+            },
+        ) as r:
+            r.raise_for_status()
+            async for chunk in r.aiter_bytes(4096):
+                if chunk:
+                    yield chunk
+
+
 # ---------------------------------------------------------------------------
 # STT — Deepgram Nova-2
 # ---------------------------------------------------------------------------

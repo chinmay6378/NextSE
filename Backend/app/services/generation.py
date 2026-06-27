@@ -81,7 +81,7 @@ Always quantify the cost of doing nothing (R0 = risk of status quo) vs. the risk
 The SE must widen this gap: "What happens if you do nothing?" [long pause — most powerful question in sales]
 
 ═══════════════════════════════════════
-GENERATE EXACTLY 11 SECTIONS
+GENERATE EXACTLY 15 SECTIONS
 ═══════════════════════════════════════
 
 Section 1 — Company Snapshot
@@ -192,8 +192,29 @@ Fields:
 • What Success Looks Like — what the SE must walk out with (a specific commitment, not "good vibes")
 • Closing Move — the exact How-question to end the meeting with and drive a clear next step
 
+Section 14 — KPI Dashboard
+Map this client's products/solutions to the key business metrics the prospect actually tracks.
+Fields:
+• Industry KPIs — the 5-7 metrics this prospect's business runs on (e.g. OEE %, Cost per Ton, Rejection Rate %, Revenue per Unit, Yield %, MTBF, Working Capital Days, Capacity Utilisation %)
+• How This Client's Product Moves Each KPI — for each KPI: the before/after impact this client's solution delivers (quantify using document data; label as "industry typical" if estimating)
+• KPI-Opening Script — one sentence the SE uses to anchor value to the prospect's own metrics: "Most [industry] companies we work with track [KPI]. What does that number look like for you right now?"
+• KPI Red Flags — 3-4 signals in a conversation that indicate the prospect has a serious KPI problem this client solves
+• ROI Frame — a simple napkin calculation the SE can do in 2 minutes (before/after using industry-typical figures if document data is unavailable)
+CRITICAL: Ground every KPI in this client's actual industry and product. No generic statements.
+
+Section 15 — Lead Qualification Criteria (LOC)
+A rapid scoring checklist to qualify or disqualify a lead in the first 10 minutes. Field-ready format only.
+Fields:
+• Must-Have Criteria — 5 non-negotiable yes/no tests (any "No" = disqualify immediately; each must be observable or askable in the first conversation)
+• Scoring Criteria — 5 weighted factors scored 0-2 each; 7+ = strong opportunity, 4-6 = qualify further, <4 = deprioritise; include the field-test question for each
+• Automatic Disqualifiers — 3-5 hard stops with a graceful exit line for each ("What I'd suggest is...")
+• Minimum Viable Opportunity — minimum deal size, volume, or relationship type worth an SE's time
+• Green Flags — 3-5 signals that indicate a high-priority lead the SE should accelerate
+• LOC One-Liner — one sentence that quickly tests intent: "Most [ICP description] we work with are dealing with [pain]. Is that something on your radar right now?"
+CRITICAL: Every criterion must be specific to THIS client's product and ideal buyer. Not a generic BANT template.
+
 ═══════════════════════════════════════
-STRUCTURED FIELDS (fill in addition to the 13 narrative sections)
+STRUCTURED FIELDS (fill in addition to the 15 narrative sections)
 ═══════════════════════════════════════
 
 product_fab_chains — One entry per product/service mentioned in documents.

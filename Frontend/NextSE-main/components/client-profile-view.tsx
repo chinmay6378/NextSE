@@ -68,6 +68,8 @@ const SECTIONS: SectionCfg[] = [
   { key: 'watchlist_director_notes',   num: 11, title: 'Watchlist / Director Notes', shortTitle: 'Watchlist' },
   { key: 'compelling_reasons_to_buy', num: 12, title: 'Compelling Reasons to Buy',  shortTitle: 'Why Buy'   },
   { key: 'meeting_prep_guide',        num: 13, title: 'Meeting Prep Guide',          shortTitle: 'Prep Guide'},
+  { key: 'kpi_dashboard',             num: 14, title: 'KPI Dashboard',               shortTitle: 'KPIs'      },
+  { key: 'lead_qualification_criteria', num: 15, title: 'Lead Qualification Criteria', shortTitle: 'LOC'     },
 ]
 
 // ─── Collapsible wrapper ──────────────────────────────────────────────────────
@@ -434,13 +436,13 @@ export function ClientProfileView({ contentJson, contentMarkdown }: ClientProfil
 
   // Build nav pills: narrative sections + structured sections that have data
   const structuredNavItems = [
-    fabChains.length > 0          && { key: 'fab',         num: 14, shortTitle: 'FAB Chains'  },
-    stakeholderMap.length > 0     && { key: 'stakeholders', num: 15, shortTitle: 'Stakeholders'},
-    discoveryQuestions.length > 0 && { key: 'discovery',   num: 16, shortTitle: 'Discovery'   },
-    objectionCards.length > 0     && { key: 'objections',  num: 17, shortTitle: 'Objections'  },
-    competitorEntries.length > 0  && { key: 'competitors', num: 18, shortTitle: 'Battle Cards' },
-    accusationLabels.length > 0   && { key: 'audit',       num: 19, shortTitle: 'Audit'       },
-    icpQuestions.length > 0       && { key: 'icp',         num: 20, shortTitle: 'ICP'         },
+    fabChains.length > 0          && { key: 'fab',         num: 16, shortTitle: 'FAB Chains'  },
+    stakeholderMap.length > 0     && { key: 'stakeholders', num: 17, shortTitle: 'Stakeholders'},
+    discoveryQuestions.length > 0 && { key: 'discovery',   num: 18, shortTitle: 'Discovery'   },
+    objectionCards.length > 0     && { key: 'objections',  num: 19, shortTitle: 'Objections'  },
+    competitorEntries.length > 0  && { key: 'competitors', num: 20, shortTitle: 'Battle Cards' },
+    accusationLabels.length > 0   && { key: 'audit',       num: 21, shortTitle: 'Audit'       },
+    icpQuestions.length > 0       && { key: 'icp',         num: 22, shortTitle: 'ICP'         },
   ].filter(Boolean) as { key: string; num: number; shortTitle: string }[]
 
   return (
@@ -481,49 +483,49 @@ export function ClientProfileView({ contentJson, contentMarkdown }: ClientProfil
       {fabChains.length > 0 && (
         <FABChainsCard
           items={fabChains}
-          num={14}
+          num={16}
           divRef={(el) => { sectionRefs.current['fab'] = el }}
         />
       )}
       {stakeholderMap.length > 0 && (
         <StakeholderMapCard
           items={stakeholderMap}
-          num={15}
+          num={17}
           divRef={(el) => { sectionRefs.current['stakeholders'] = el }}
         />
       )}
       {discoveryQuestions.length > 0 && (
         <DiscoveryQuestionsCard
           items={discoveryQuestions}
-          num={16}
+          num={18}
           divRef={(el) => { sectionRefs.current['discovery'] = el }}
         />
       )}
       {objectionCards.length > 0 && (
         <ObjectionBattleCardsCard
           items={objectionCards}
-          num={17}
+          num={19}
           divRef={(el) => { sectionRefs.current['objections'] = el }}
         />
       )}
       {competitorEntries.length > 0 && (
         <CompetitorEntriesCard
           items={competitorEntries}
-          num={18}
+          num={20}
           divRef={(el) => { sectionRefs.current['competitors'] = el }}
         />
       )}
       {accusationLabels.length > 0 && (
         <AccusationAuditCard
           items={accusationLabels}
-          num={19}
+          num={21}
           divRef={(el) => { sectionRefs.current['audit'] = el }}
         />
       )}
       {icpQuestions.length > 0 && (
         <ICPQualifierCard
           items={icpQuestions}
-          num={20}
+          num={22}
           divRef={(el) => { sectionRefs.current['icp'] = el }}
         />
       )}

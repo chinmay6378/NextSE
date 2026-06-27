@@ -12,15 +12,17 @@ import json
 import uuid
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, File, Form, HTTPException, UploadFile, status
+from fastapi import APIRouter, File, Form, HTTPException, Query, UploadFile, WebSocket, WebSocketDisconnect, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.deps import DbSession, EngineerProfile
+from app.core.db import AsyncSessionLocal
 from app.models import (
     Client,
     ClientProfileGenerated,
     MCQAttempt,
+    Profile,
     Result,
     TestRequest,
     VoiceSession,
@@ -33,6 +35,7 @@ from app.services.voice_scoring import (
     generate_response_with_audio,
     score_voice_session,
     synthesize_speech,
+    synthesize_speech_stream,
     transcribe_audio,
 )
 
@@ -343,6 +346,150 @@ async def demo_turn(
     ai_audio_b64 = base64.b64encode(ai_audio_bytes).decode() if ai_audio_bytes else None
 
     return {"transcription": transcription, "ai_response": ai_response, "ai_audio_b64": ai_audio_b64}
+
+
+@router.websocket("/ws/voice/demo/{client_id}")
+async def ws_voice_demo(
+    websocket: WebSocket,
+    client_id: str,
+    token: str = Query(default=""),
+) -> None:
+    """Real-time voice practice over WebSocket with streaming TTS.
+
+    Client → Server (text JSON):
+      {"type": "turn", "audio_b64": "<base64 WAV>", "conversation": [...]}
+      {"type": "interrupt"}
+      {"type": "end"}
+
+    Server → Client (text JSON):
+      {"type": "transcript", "text": "..."}
+      {"type": "ai_response", "text": "..."}
+      {"type": "audio_done"}
+      {"type": "interrupted"}
+      {"type": "error", "message": "..."}
+    Server → Client (binary): raw MP3 audio chunks
+    """
+    from app.core.security import decode_supabase_jwt
+
+    try:
+        claims = decode_supabase_jwt(token)
+        auth_user_id = claims.get("sub")
+        if not auth_user_id:
+            return
+    except Exception:
+        return
+
+    async with AsyncSessionLocal() as db:
+        try:
+            profile = (await db.execute(
+                select(Profile).where(Profile.auth_user_id == uuid.UUID(auth_user_id))
+            )).scalar_one_or_none()
+        except Exception:
+            return
+
+        if profile is None or profile.role != "engineer":
+            return
+
+        try:
+            client_ctx = await _client_context(db, uuid.UUID(client_id))
+        except Exception:
+            client_ctx = "a prospective client"
+
+    await websocket.accept()
+
+    abort_event = asyncio.Event()
+    tts_task: asyncio.Task | None = None
+
+    async def do_tts_stream(text: str) -> None:
+        abort_event.clear()
+        try:
+            async for chunk in synthesize_speech_stream(text):
+                if abort_event.is_set():
+                    break
+                await websocket.send_bytes(chunk)
+            if not abort_event.is_set():
+                await websocket.send_json({"type": "audio_done"})
+        except asyncio.CancelledError:
+            pass
+        except Exception:
+            try:
+                if not abort_event.is_set():
+                    await websocket.send_json({"type": "audio_done"})
+            except Exception:
+                pass
+
+    try:
+        while True:
+            msg = await websocket.receive()
+            if msg["type"] == "websocket.disconnect":
+                break
+
+            if not msg.get("text"):
+                continue
+
+            try:
+                data = json.loads(msg["text"])
+            except json.JSONDecodeError:
+                continue
+
+            msg_type = data.get("type")
+
+            if msg_type == "interrupt":
+                abort_event.set()
+                if tts_task and not tts_task.done():
+                    tts_task.cancel()
+                tts_task = None
+                try:
+                    await websocket.send_json({"type": "interrupted"})
+                except Exception:
+                    pass
+
+            elif msg_type == "turn":
+                abort_event.set()
+                if tts_task and not tts_task.done():
+                    tts_task.cancel()
+                tts_task = None
+
+                audio_b64 = data.get("audio_b64", "")
+                conversation = data.get("conversation", [])
+
+                try:
+                    audio_bytes = base64.b64decode(audio_b64)
+                except Exception:
+                    await websocket.send_json({"type": "error", "message": "Invalid audio data"})
+                    continue
+
+                try:
+                    transcript = await transcribe_audio(audio_bytes, "audio/wav")
+                    if not transcript:
+                        transcript = "[inaudible]"
+                except Exception as exc:
+                    await websocket.send_json({"type": "error", "message": f"Transcription failed: {exc}"})
+                    continue
+
+                await websocket.send_json({"type": "transcript", "text": transcript})
+
+                conversation_with_turn = list(conversation) + [{"speaker": "engineer", "message": transcript}]
+                try:
+                    ai_text = await generate_prospect_response(conversation_with_turn, client_ctx)
+                except Exception as exc:
+                    await websocket.send_json({"type": "error", "message": f"AI response failed: {exc}"})
+                    continue
+
+                await websocket.send_json({"type": "ai_response", "text": ai_text})
+
+                # Stream TTS as background task so interrupt messages can arrive concurrently
+                tts_task = asyncio.create_task(do_tts_stream(ai_text))
+
+            elif msg_type == "end":
+                break
+
+    except WebSocketDisconnect:
+        pass
+    finally:
+        abort_event.set()
+        if tts_task and not tts_task.done():
+            tts_task.cancel()
 
 
 @router.post("/voice/demo/score")
