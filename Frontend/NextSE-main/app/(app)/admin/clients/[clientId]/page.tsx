@@ -153,6 +153,7 @@ export default function ClientDetailPage({ params }: { params: Promise<{ clientI
   const { clientId } = use(params)
   const queryClient = useQueryClient()
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const strategyFileInputRef = useRef<HTMLInputElement>(null)
 
   const [tab, setTab] = useState<Tab>('profile')
   const [isEditing, setIsEditing] = useState(false)
@@ -192,6 +193,11 @@ export default function ClientDetailPage({ params }: { params: Promise<{ clientI
   const uploadMutation = useMutation({
     mutationFn: (files: File[]) => uploadClientFiles(clientId, files),
     onSuccess: () => { invalidate(); toast.success('Files uploaded') },
+    onError: (e) => toast.error(e instanceof ApiError ? e.message : 'Upload failed'),
+  })
+  const strategyUploadMutation = useMutation({
+    mutationFn: (files: File[]) => uploadClientFiles(clientId, files, 'strategy'),
+    onSuccess: () => { invalidate(); toast.success('Strategy documents uploaded') },
     onError: (e) => toast.error(e instanceof ApiError ? e.message : 'Upload failed'),
   })
   const deleteFileMutation = useMutation({
@@ -277,6 +283,11 @@ export default function ClientDetailPage({ params }: { params: Promise<{ clientI
   const handleFilesSelected = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files ?? [])
     if (files.length > 0) uploadMutation.mutate(files)
+    e.target.value = ''
+  }
+  const handleStrategyFilesSelected = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files ?? [])
+    if (files.length > 0) strategyUploadMutation.mutate(files)
     e.target.value = ''
   }
 
@@ -538,6 +549,92 @@ export default function ClientDetailPage({ params }: { params: Promise<{ clientI
           )}
         </AnimatePresence>
       </div>
+
+      {/* ══ STRATEGY DOCUMENTS ═══════════════════════════════════════════════ */}
+      <motion.div
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.15 }}
+        className="bg-card border border-border/60 rounded-2xl p-5 space-y-4"
+      >
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center">
+              <TrendingUp size={15} className="text-emerald-500" />
+            </div>
+            <div>
+              <span className="font-semibold text-sm">Strategy Documents</span>
+              <p className="text-[11px] text-muted-foreground/60 mt-0.5">
+                GTM plans, territory plans, pricing docs — used to generate the Strategy Building module
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={() => strategyFileInputRef.current?.click()}
+            disabled={strategyUploadMutation.isPending}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 text-xs font-medium transition-colors disabled:opacity-50"
+          >
+            {strategyUploadMutation.isPending ? <Loader2 size={12} className="animate-spin" /> : <Upload size={12} />}
+            {strategyUploadMutation.isPending ? 'Uploading…' : 'Upload'}
+          </button>
+          <input
+            ref={strategyFileInputRef}
+            type="file"
+            multiple
+            accept=".pdf,.docx,.txt,.csv,.md"
+            className="hidden"
+            onChange={handleStrategyFilesSelected}
+          />
+        </div>
+
+        {(() => {
+          const strategyFiles = data.files.filter(f => f.file_category === 'strategy')
+          if (strategyFiles.length === 0) {
+            return (
+              <button
+                onClick={() => strategyFileInputRef.current?.click()}
+                className="w-full border-2 border-dashed border-border/50 rounded-xl py-6 flex flex-col items-center gap-2 hover:border-emerald-500/40 hover:bg-emerald-500/5 transition-all group cursor-pointer"
+              >
+                <TrendingUp size={20} className="text-muted-foreground/50 group-hover:text-emerald-500 transition-colors" />
+                <p className="text-sm text-muted-foreground group-hover:text-foreground transition-colors">
+                  Upload strategy documents (optional)
+                </p>
+                <p className="text-xs text-muted-foreground/50">PDF, DOCX, TXT, CSV, MD</p>
+              </button>
+            )
+          }
+          return (
+            <ul className="space-y-1.5">
+              {strategyFiles.map((file, i) => (
+                <motion.li
+                  key={file.id}
+                  initial={{ opacity: 0, x: -8 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: i * 0.04 }}
+                  className="flex items-center gap-3 bg-emerald-500/5 hover:bg-emerald-500/10 rounded-xl px-3 py-2.5 transition-colors group"
+                >
+                  <div className="w-7 h-7 rounded-lg bg-emerald-500/10 flex items-center justify-center flex-shrink-0">
+                    <TrendingUp size={13} className="text-emerald-500" />
+                  </div>
+                  <span className="flex-1 text-xs font-medium truncate">{file.file_name}</span>
+                  <div className="flex items-center gap-2">
+                    {file.extraction_status === 'pending' && <Loader2 size={12} className="animate-spin text-amber-400" />}
+                    {file.extraction_status === 'done'    && <CheckCircle2 size={12} className="text-emerald-400" />}
+                    {file.extraction_status === 'failed'  && <XCircle size={12} className="text-red-400" />}
+                    <button
+                      onClick={() => deleteFileMutation.mutate(file.id)}
+                      className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-all"
+                      aria-label={`Delete ${file.file_name}`}
+                    >
+                      <Trash2 size={12} />
+                    </button>
+                  </div>
+                </motion.li>
+              ))}
+            </ul>
+          )
+        })()}
+      </motion.div>
 
       {/* ══ TABS + CONTENT ════════════════════════════════════════════════════ */}
       <motion.div

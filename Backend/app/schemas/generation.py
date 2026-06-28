@@ -412,7 +412,7 @@ class GeneratedStudyMaterial(BaseModel):
     model_config = _STRICT
 
     modules: list[StudyModule] = Field(description=(
-        "Exactly 13 SE Training Modules — Care + Voss framework. Generate in order: "
+        "Exactly 14 SE Training Modules — Care + Voss framework. Generate in order: "
         "1) The Four SE Roles (Technical Engineer / Salesperson / Trusted Advisor / Explainer); "
         "2) Product Mastery — FAB Chain (IS→DOES→MEANS) + 3WM+M tagging for every product; "
         "3) Business Value Discovery — Care BVD 4-step process with tailored question bank; "
@@ -425,7 +425,8 @@ class GeneratedStudyMaterial(BaseModel):
         "10) Follow-Up & Re-Engagement — Non-responder sequence, post-demo questions, deadline-based cadence; "
         "11) POC Management — Care 7 phases + 7 SE habits + success criteria template; "
         "12) Trust & Executive Engagement — CRISP equation, executive wants ranking, opening script; "
-        "13) Field Preparation Toolkit — Pre-call One Sheet, Discovery Cheat Sheet, Objection Quick-Reference, Post-call Debrief. "
+        "13) Field Preparation Toolkit — Pre-call One Sheet, Discovery Cheat Sheet, Objection Quick-Reference, Post-call Debrief; "
+        "14) Strategy Building — target customer profile, prospecting plan, account prioritization, 30-60-90 day action plan, competitive response strategy. "
         "Never skip or merge modules. Each must be thorough."
     ))
 
@@ -481,6 +482,14 @@ class NegotiatorVariant(BaseModel):
 
 class GeneratedSalesPitch(BaseModel):
     model_config = _STRICT
+
+    what_to_pitch: list[str] = Field(description=(
+        "One bullet per product/solution from the documents. "
+        "Each bullet answers: (1) exact product name, (2) which specific buyer type / industry to pitch it to, "
+        "(3) the single most compelling benefit to open with, (4) typical deal size/price range if available. "
+        "Order from highest-priority to lowest. This tells the SE WHAT to offer and to WHOM — "
+        "distinct from the HOW in the rest of the pitch."
+    ))
 
     accusation_audit: list[str] = Field(description=(
         "3-5 preemptive Accusation Audit labels the SE says OUT LOUD before any objection arises. "

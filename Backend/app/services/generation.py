@@ -246,9 +246,10 @@ RULES:
 3. Be thorough and field-ready. An SE should finish this playbook and be ready for their first live call.
 4. Use clean markdown with headers, tables, and bullet lists throughout.
 5. Never skip or merge modules. Each must be complete and detailed.
+6. WRITE IN SIMPLE, CLEAR LANGUAGE. This content is for freshers and junior sales engineers (0-2 years experience). Explain every framework acronym (FAB, BVD, TAG, LACE, etc.) in plain words the first time it appears. Use short sentences. Give real, concrete examples. Avoid dense jargon. Write as if explaining to a smart new hire on their first week — not to a veteran. A fresher should read any module and immediately understand what to DO.
 
 ═══════════════════════════════════════
-GENERATE EXACTLY 13 MODULES
+GENERATE EXACTLY 14 MODULES
 ═══════════════════════════════════════
 
 MODULE 1 — THE FOUR SE ROLES (Care Framework)
@@ -512,7 +513,43 @@ D. POST-CALL DEBRIEF QUESTIONS:
   Who is behind the table that we haven't met yet?
   Was MARS achieved? Was BARS achieved?
   Champion status: are they invested in our success? Did they personally win from this meeting?
-  Next action and owner — written down before leaving the call"""
+  Next action and owner — written down before leaving the call
+
+MODULE 14 — STRATEGY BUILDING
+Use any strategy documents provided (market entry plans, go-to-market plans, territory plans, pricing strategies, competitor analysis reports) alongside the product documents. If no strategy documents are uploaded, infer a practical strategy from the product, industry, and client context. Write everything in plain, simple language — a fresher SE should be able to read this and know exactly what to do tomorrow.
+
+A. THE BIG PICTURE (3-4 plain sentences: what is the overall sales goal for this product? who are we going after and why?)
+
+B. TARGET CUSTOMER PROFILE — in simple terms:
+  • What type of company is the BEST fit? (size, industry, the pain they have right now)
+  • What type of company to AVOID and why
+  • Name 3-5 real examples of companies/sectors to target first
+
+C. HOW TO FIND CUSTOMERS — Prospecting Playbook:
+  • Where to look: industry events, LinkedIn filters, trade associations, referrals, existing database
+  • Copy-paste opening message template: one short message the SE can send on Day 1
+  • How many new prospects to contact per week to build a healthy pipeline (give a specific number)
+
+D. ACCOUNT PRIORITIZATION — simple scoring table:
+  5 criteria scored 1-3 each (e.g. company size, urgency of pain, budget signal, accessibility, strategic fit).
+  Score 12+: call this week. Score 8-11: call next month. Score below 8: nurture only.
+
+E. 30-60-90 DAY ACTION PLAN for a new SE joining this territory:
+  Day 1-30 (Learn it): specific daily tasks — product study, first 5 prospect calls, shadow senior SE, memorise top 3 objections
+  Day 31-60 (Practice it): first 10 solo prospect calls, 3 demos booked, first POC conversation started
+  Day 61-90 (Win it): 1 proposal submitted, 1 POC running, pipeline target (give a specific ₹ number or deal count)
+
+F. COMPETITIVE RESPONSE STRATEGY:
+  • If prospect says "We're already talking to [competitor]" — exact 2-sentence script to say
+  • One thing to ALWAYS do when a competitor is in the room
+  • One thing to NEVER do when competing (and why it backfires)
+
+G. PRICING & DEAL STRATEGY (from documents if available, otherwise infer from context):
+  • Typical deal size or price range
+  • What to do if prospect asks for a discount: exact script to use
+  • When to handle this alone vs. when to loop in the manager
+
+H. THE PERFECT WIN — describe in 3 sentences: who is the ideal customer, what exact problem they had, how this product solved it, and what it meant for them in real numbers (time saved, cost reduced, output improved)."""
 
 SALES_PITCH_SYSTEM_PROMPT = (
     "You are a Senior Sales Engineer trained in Mastering Technical Sales (John Care, 4th Ed.) "
@@ -556,6 +593,13 @@ SALES_PITCH_SYSTEM_PROMPT = (
     "Analyst (data-driven, needs time, hates surprises — lead with specifics, give processing time), "
     "Accommodator (relationship-first, may over-commit — be sociable, use How questions to drive action), "
     "Assertive (time=money, direct — validate their position first, then guide). "
+    "\n\n"
+    "WHAT TO PITCH (list each product/solution from the documents as a separate bullet): "
+    "For each product or solution, state in plain language: (1) its exact name as in the documents, "
+    "(2) which type of buyer or industry to pitch it to (be specific — not 'any manufacturer' but 'auto-parts plant with 50+ workers'), "
+    "(3) the ONE most compelling benefit to open with, and (4) the typical deal size or price if available in documents. "
+    "Order from highest-priority (best revenue/fit) to lowest. "
+    "This section answers 'What exactly do I offer and to whom?' — distinct from HOW to pitch. "
     "\n\n"
     "STRICT: Use ONLY product facts, specs, applications, and differentiators from the uploaded documents. "
     "Never add general knowledge. Every value prop must reference something specific from the documents."
@@ -781,7 +825,8 @@ def _sales_pitch_to_markdown(sp: GeneratedSalesPitch) -> str:
         f"- Close: {v.close_approach}"
         for v in sp.negotiator_variants
     )
-    return "\n\n".join([
+    parts = [
+        "## What to Pitch — Product & Buyer Guide\n" + _bullets(sp.what_to_pitch),
         "## Accusation Audit (Say These Before Any Objection Arises)\n" + audit_lines,
         "## Opening\n" + sp.opening,
         "## Key Value Propositions\n" + _bullets(sp.key_value_props),
@@ -789,7 +834,8 @@ def _sales_pitch_to_markdown(sp: GeneratedSalesPitch) -> str:
         "## Closing\n" + sp.closing,
         "## Non-Responder Email\n" + sp.non_responder_email,
         "## Negotiator Variants\n" + variant_lines,
-    ])
+    ]
+    return "\n\n".join(parts)
 
 
 async def _resolve_youtube_video_ids(videos: list[dict]) -> list[dict]:
