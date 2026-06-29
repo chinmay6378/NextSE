@@ -547,7 +547,7 @@ export function ClientLearning({ clientId, clientName }: ClientLearningProps) {
               <div className="p-6">
                 {selected.kind === 'flashcard' ? (
                   <div
-                    className="min-h-52 rounded-2xl bg-gradient-to-br from-violet-500 to-purple-600 p-8 flex flex-col justify-center items-center cursor-pointer text-center shadow-lg overflow-hidden"
+                    className="rounded-2xl bg-gradient-to-br from-violet-500 to-purple-600 p-6 cursor-pointer text-center shadow-lg"
                     onClick={() => setFlipped(!flipped)}
                   >
                     <AnimatePresence mode="wait">
@@ -557,12 +557,12 @@ export function ClientLearning({ clientId, clientName }: ClientLearningProps) {
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0, y: -12 }}
                         transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
-                        className="flex flex-col items-center gap-4"
+                        className="flex flex-col items-center gap-3"
                       >
-                        <p className="text-xs font-semibold text-white/60 uppercase tracking-wider">
-                          {flipped ? 'Answer' : 'Question'} — click to flip
+                        <p className="text-xs font-semibold text-white/60 uppercase tracking-wider shrink-0">
+                          {flipped ? 'Answer' : 'Question'} — tap to flip
                         </p>
-                        <p className="text-xl font-bold text-white leading-snug">
+                        <p className="text-base font-semibold text-white leading-relaxed whitespace-pre-wrap text-left w-full">
                           {flipped ? selected.back : selected.front}
                         </p>
                       </motion.div>

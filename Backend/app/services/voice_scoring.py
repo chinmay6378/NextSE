@@ -24,8 +24,17 @@ from app.core.config import settings
 
 _groq = AsyncGroq(api_key=settings.groq_api_key)
 
-OPENING_PROMPT = "Hello? Kaun bol raha hai?"
+OPENING_PROMPT = "Yes, hello — who's this?"
 _ELEVENLABS_VOICE_ID = "codoBx1vrQVwrVQylqGj"
+
+# Shared voice settings — high stability prevents tone drift between calls
+_TTS_VOICE_SETTINGS = {
+    "stability": 0.75,        # was 0.4 — low stability caused tone to shift each call
+    "similarity_boost": 0.85, # was 0.75 — keeps voice character consistent
+    "style": 0.0,             # disable style exaggeration for professional tone
+    "use_speaker_boost": True,
+    "speed": 1.0,
+}
 
 
 # ---------------------------------------------------------------------------
@@ -33,11 +42,11 @@ _ELEVENLABS_VOICE_ID = "codoBx1vrQVwrVQylqGj"
 # ---------------------------------------------------------------------------
 
 async def synthesize_speech(text: str) -> bytes:
-    """Convert text to speech with ElevenLabs Flash (ultra-low-latency). Returns MP3 bytes."""
-    async with httpx.AsyncClient(timeout=20) as client:
+    """Convert text to speech with ElevenLabs Flash. Returns complete MP3 bytes."""
+    async with httpx.AsyncClient(timeout=30) as client:
         r = await client.post(
-            f"https://api.elevenlabs.io/v1/text-to-speech/{_ELEVENLABS_VOICE_ID}/stream",
-            params={"optimize_streaming_latency": 4, "output_format": "mp3_44100_128"},
+            f"https://api.elevenlabs.io/v1/text-to-speech/{_ELEVENLABS_VOICE_ID}",
+            params={"output_format": "mp3_44100_128"},
             headers={
                 "xi-api-key": settings.elevenlabs_api_key,
                 "Content-Type": "application/json",
@@ -45,11 +54,7 @@ async def synthesize_speech(text: str) -> bytes:
             json={
                 "text": text,
                 "model_id": "eleven_flash_v2_5",
-                "voice_settings": {
-                    "stability": 0.4,
-                    "similarity_boost": 0.75,
-                    "speed": 1.0,
-                },
+                "voice_settings": _TTS_VOICE_SETTINGS,
             },
         )
         r.raise_for_status()
@@ -57,12 +62,12 @@ async def synthesize_speech(text: str) -> bytes:
 
 
 async def synthesize_speech_stream(text: str):
-    """Stream MP3 audio chunks from ElevenLabs Flash as they arrive. Use for WebSocket TTS streaming."""
-    async with httpx.AsyncClient(timeout=20) as client:
+    """Stream MP3 audio chunks from ElevenLabs Flash. Use for WebSocket TTS streaming."""
+    async with httpx.AsyncClient(timeout=30) as client:
         async with client.stream(
             "POST",
             f"https://api.elevenlabs.io/v1/text-to-speech/{_ELEVENLABS_VOICE_ID}/stream",
-            params={"optimize_streaming_latency": 4, "output_format": "mp3_44100_128"},
+            params={"optimize_streaming_latency": 2, "output_format": "mp3_44100_128"},
             headers={
                 "xi-api-key": settings.elevenlabs_api_key,
                 "Content-Type": "application/json",
@@ -70,11 +75,7 @@ async def synthesize_speech_stream(text: str):
             json={
                 "text": text,
                 "model_id": "eleven_flash_v2_5",
-                "voice_settings": {
-                    "stability": 0.4,
-                    "similarity_boost": 0.75,
-                    "speed": 1.0,
-                },
+                "voice_settings": _TTS_VOICE_SETTINGS,
             },
         ) as r:
             r.raise_for_status()
@@ -150,23 +151,46 @@ async def transcribe_audio(audio_bytes: bytes, mime_type: str = "audio/webm") ->
 # LLM helpers
 # ---------------------------------------------------------------------------
 
+def _extract_company_and_industry(client_context: str) -> tuple[str, str]:
+    company = "the company"
+    industry = "business"
+    try:
+        if "(" in client_context:
+            company = client_context.split("(")[0].strip()
+        if "industry:" in client_context:
+            industry = client_context.split("industry:")[1].split(")")[0].strip()
+    except Exception:
+        pass
+    return company, industry
+
+
 def _prospect_messages(conversation: list[dict], client_context: str) -> list[dict]:
+    company, industry = _extract_company_and_industry(client_context)
     return [
         {
             "role": "system",
             "content": (
-                f"You are a busy professional at: {client_context}. "
-                "A sales engineer just cold-called you — you did NOT ask for this call. "
-                "You are mildly annoyed, guarded, but will listen briefly. "
-                "STRICT RULE: reply in 1-2 short sentences ONLY. Never more. "
-                "Think of it like a WhatsApp reply — quick, natural, reactive. "
-                "Do NOT explain, elaborate, or give opinions. Just react to what they said. "
-                "Push back on vague claims. Ask sharp one-liners. Show brief interest only if earned. "
-                "Never pretend to know their product already. "
-                "Always reply in Hinglish (natural Hindi-English mix in Roman script). "
-                "Good reply examples: 'Haan bolo, kya cheez hai?' | 'Price kya hai?' | "
-                "'Competitor X se kya alag hai?' | 'Okay samjha, aur kya?' | "
-                "'Dekho mujhe abhi time nahi hai zyada.' | 'Interesting, demo dikh sakta hai?'"
+                f"You are a senior decision-maker (VP / Director / Owner) at {company}, "
+                f"a company in the {industry} industry. "
+                "A sales engineer has cold-called you. You did NOT ask for this call. "
+                "You are professional, busy, and appropriately skeptical — but fair and open if they make a good point.\n\n"
+                "RULES:\n"
+                "1. Reply in 1-3 complete sentences. Be direct. No filler words.\n"
+                "2. Speak naturally in professional English — like a real senior executive on a call.\n"
+                "3. Ask sharp, specific questions: ROI, implementation effort, integration, support model.\n"
+                "4. Push back on vague claims — ask for specifics or proof.\n"
+                "5. Raise realistic objections: cost, existing vendors, team bandwidth, timelines.\n"
+                "6. Show genuine interest only when the engineer earns it with a compelling point.\n"
+                "7. Never pretend to know their product or company already.\n"
+                "8. Vary your responses — sometimes ask, sometimes state your position or concern.\n"
+                "9. Always complete every sentence fully. Never trail off.\n\n"
+                "Example replies:\n"
+                "'What exactly does your product do that our current system doesn't?'\n"
+                "'We've evaluated similar tools before — what makes yours different?'\n"
+                "'That sounds interesting. What does implementation look like and how long does it take?'\n"
+                "'I have about five minutes. Give me the core value proposition.'\n"
+                "'We're already locked in with another vendor until next year.'\n"
+                "'If the ROI is what you're claiming, I'd consider a pilot — but I need to see real numbers.'"
             ),
         },
         *[
@@ -205,13 +229,13 @@ async def _groq_chat_with_retry(messages: list[dict], max_tokens: int, temperatu
 
 
 async def generate_prospect_response(conversation: list[dict], client_context: str) -> str:
-    """Generate AI prospect reply (non-streaming, used by score path)."""
+    """Generate AI prospect reply (non-streaming, used by WebSocket demo path)."""
     resp = await _groq_chat_with_retry(
         messages=_prospect_messages(conversation, client_context),
-        max_tokens=60,
-        temperature=0.8,
+        max_tokens=120,
+        temperature=0.75,
     )
-    return (resp.choices[0].message.content or "Haan, bolo.").strip()
+    return (resp.choices[0].message.content or "Go ahead, I'm listening.").strip()
 
 
 async def generate_response_with_audio(
@@ -220,16 +244,15 @@ async def generate_response_with_audio(
 ) -> tuple[str, bytes | None]:
     """Stream Groq LLM to collect full text, then synthesize in one ElevenLabs call.
 
-    A single TTS request produces one coherent MP3 with consistent prosody and
-    voice throughout. Parallel per-sentence calls produce separate MP3 files
-    whose raw byte concatenation confuses browser audio decoders.
+    Single TTS request = one coherent MP3. Splitting per sentence and
+    concatenating bytes causes decoder glitches and tone shifts.
     """
     full_text = ""
 
     stream = await _groq_chat_with_retry(
         messages=_prospect_messages(conversation, client_context),
-        max_tokens=60,
-        temperature=0.8,
+        max_tokens=120,
+        temperature=0.75,
         stream=True,
     )
 
