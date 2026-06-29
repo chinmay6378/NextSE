@@ -1,4 +1,4 @@
-"""add level and started_at columns to mcq_attempts
+"""add level column to mcq_attempts
 
 Revision ID: 0005
 Revises: 0004
@@ -21,12 +21,7 @@ def upgrade() -> None:
         "mcq_attempts",
         sa.Column("level", sa.Integer(), nullable=False, server_default="1"),
     )
-    op.add_column(
-        "mcq_attempts",
-        sa.Column("started_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.func.now()),
-    )
 
 
 def downgrade() -> None:
-    op.drop_column("mcq_attempts", "started_at")
     op.drop_column("mcq_attempts", "level")
