@@ -2,11 +2,11 @@ import uuid
 from typing import Literal
 
 from fastapi import APIRouter, HTTPException, status
-from sqlalchemy import select
+from sqlalchemy import func, select
 
 from app.crud import get_latest_version, get_visible_client
 from app.deps import AdminProfile, CurrentProfile, DbSession
-from app.models import Client, ClientFile, ClientProfileGenerated, SalesPitch, StudyMaterial
+from app.models import Client, ClientFile, ClientProfileGenerated, SalesPitch, StudyMaterial, TestRequest
 from app.schemas.client import (
     ClientCreate,
     ClientDetailOut,
@@ -21,6 +21,14 @@ router = APIRouter(prefix="/clients", tags=["clients"])
 
 @router.post("", response_model=ClientOut, status_code=status.HTTP_201_CREATED)
 async def create_client(payload: ClientCreate, db: DbSession, profile: AdminProfile) -> Client:
+    existing = await db.scalar(
+        select(Client).where(func.lower(Client.name) == func.lower(payload.name))
+    )
+    if existing:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"A client named '{payload.name}' already exists",
+        )
     client = Client(
         name=payload.name,
         industry=payload.industry,
@@ -43,8 +51,8 @@ async def list_clients(
 ) -> list[Client]:
     query = select(Client)
     if profile.role == "engineer":
-        # Engineers see all published clients for study; TestRequest gates the actual test.
-        query = query.where(Client.status == "published")
+        assigned_ids = select(TestRequest.client_id).where(TestRequest.engineer_id == profile.id)
+        query = query.where(Client.status == "published").where(Client.id.in_(assigned_ids))
     elif profile.role != "admin":
         query = query.where(Client.status == "published")
     elif status_filter:

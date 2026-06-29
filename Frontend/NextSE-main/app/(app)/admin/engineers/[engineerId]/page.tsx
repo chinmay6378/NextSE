@@ -1,6 +1,6 @@
 'use client'
 
-import { useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { motion, type Variants } from 'framer-motion'
 import {
   ArrowLeft,
@@ -8,13 +8,15 @@ import {
   CheckCircle2,
   ClipboardList,
   Loader2,
+  Trash2,
   TrendingUp,
 } from 'lucide-react'
 import Link from 'next/link'
-import { use } from 'react'
+import { use, useState } from 'react'
+import { toast } from 'sonner'
 
 import { listAdminResults } from '@/lib/api/results'
-import { listAdminTestRequests } from '@/lib/api/tests'
+import { listAdminTestRequests, deleteTestRequest } from '@/lib/api/tests'
 import { apiFetch } from '@/lib/api/client'
 import type { Profile, ResultOut, TestRequest } from '@/lib/api/types'
 
@@ -85,6 +87,21 @@ export default function EngineerDetailPage({
   params: Promise<{ engineerId: string }>
 }) {
   const { engineerId } = use(params)
+  const queryClient = useQueryClient()
+  const [confirmingId, setConfirmingId] = useState<string | null>(null)
+
+  const unassignMutation = useMutation({
+    mutationFn: (requestId: string) => deleteTestRequest(requestId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-test-requests', engineerId] })
+      setConfirmingId(null)
+      toast.success('Test unassigned')
+    },
+    onError: (e: Error) => {
+      setConfirmingId(null)
+      toast.error(e.message ?? 'Could not unassign test')
+    },
+  })
 
   const { data: engineer, isLoading: engLoading } = useQuery({
     queryKey: ['admin-engineer', engineerId],
@@ -269,6 +286,33 @@ export default function EngineerDetailPage({
                   <span className={`text-[11px] font-semibold px-2.5 py-0.5 rounded-full border ${STATUS_STYLES[req.status] ?? 'bg-muted text-muted-foreground border-border'}`}>
                     {STATUS_LABELS[req.status] ?? req.status}
                   </span>
+                  {(req.status === 'pending' || req.status === 'approved') && (
+                    confirmingId === req.id ? (
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          onClick={() => unassignMutation.mutate(req.id)}
+                          disabled={unassignMutation.isPending}
+                          className="text-[11px] font-semibold px-2.5 py-0.5 rounded-full border bg-red-50 text-red-600 border-red-200 hover:bg-red-100 transition-colors"
+                        >
+                          {unassignMutation.isPending ? 'Removing…' : 'Confirm'}
+                        </button>
+                        <button
+                          onClick={() => setConfirmingId(null)}
+                          className="text-[11px] font-semibold px-2.5 py-0.5 rounded-full border bg-muted text-muted-foreground border-border hover:bg-muted/80 transition-colors"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => setConfirmingId(req.id)}
+                        className="p-1.5 rounded-lg text-muted-foreground hover:text-red-500 hover:bg-red-50 transition-colors"
+                        title="Unassign"
+                      >
+                        <Trash2 size={13} />
+                      </button>
+                    )
+                  )}
                 </div>
               </motion.div>
             ))}

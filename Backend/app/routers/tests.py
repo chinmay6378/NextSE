@@ -146,6 +146,22 @@ async def list_test_requests_admin(
     return await _enrich(db, list(rows))
 
 
+@router.delete("/admin/test-requests/{request_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_test_request(
+    request_id: uuid.UUID, db: DbSession, profile: AdminProfile
+) -> None:
+    req = await db.get(TestRequest, request_id)
+    if req is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Test request not found")
+    if req.status in ("in_progress", "completed"):
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"Cannot unassign a test with status '{req.status}'",
+        )
+    await db.delete(req)
+    await db.commit()
+
+
 @router.patch("/admin/test-requests/{request_id}/approve", response_model=TestRequestOut)
 async def approve_test_request(
     request_id: uuid.UUID, db: DbSession, profile: AdminProfile

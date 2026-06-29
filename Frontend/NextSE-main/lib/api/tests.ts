@@ -48,6 +48,10 @@ export function approveTestRequest(requestId: string) {
   return apiFetch<TestRequest>(`/admin/test-requests/${requestId}/approve`, { method: 'PATCH' })
 }
 
+export function deleteTestRequest(requestId: string) {
+  return apiFetch<void>(`/admin/test-requests/${requestId}`, { method: 'DELETE' })
+}
+
 export function listEngineers() {
   return apiFetch<Profile[]>('/admin/users', { searchParams: { role: 'engineer' } })
 }
