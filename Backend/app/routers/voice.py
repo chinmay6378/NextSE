@@ -403,11 +403,9 @@ async def ws_voice_demo(
     async def do_tts_stream(text: str) -> None:
         abort_event.clear()
         try:
-            async for chunk in synthesize_speech_stream(text):
-                if abort_event.is_set():
-                    break
-                await websocket.send_bytes(chunk)
+            audio_bytes = await synthesize_speech(text)
             if not abort_event.is_set():
+                await websocket.send_bytes(audio_bytes)
                 await websocket.send_json({"type": "audio_done"})
         except asyncio.CancelledError:
             pass

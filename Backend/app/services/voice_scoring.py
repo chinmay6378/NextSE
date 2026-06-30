@@ -24,7 +24,7 @@ from app.core.config import settings
 
 _groq = AsyncGroq(api_key=settings.groq_api_key)
 
-OPENING_PROMPT = "Yes, hello — who's this?"
+OPENING_PROMPT = "Hello? Kaun bol raha hai?"
 _ELEVENLABS_VOICE_ID = "codoBx1vrQVwrVQylqGj"
 
 # Shared voice settings — high stability prevents tone drift between calls
@@ -124,7 +124,7 @@ async def transcribe_audio(audio_bytes: bytes, mime_type: str = "audio/webm") ->
                 "model": "nova-2",
                 "smart_format": "true",
                 "punctuate": "true",
-                "detect_language": "true",
+                "language": "hi",
             },
             headers={
                 "Authorization": f"Token {settings.deepgram_api_key}",
