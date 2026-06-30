@@ -138,7 +138,10 @@ async def transcribe_audio(audio_bytes: bytes, mime_type: str = "audio/webm") ->
 
     data = r.json()
     try:
-        transcript = data["results"]["channels"][0]["alternatives"][0]["transcript"].strip()
+        alt = data["results"]["channels"][0]["alternatives"][0]
+        transcript = alt["transcript"].strip()
+        detected_lang = data["results"]["channels"][0].get("detected_language", "?")
+        print(f"[STT] lang={detected_lang} | transcript={transcript!r}", flush=True)
     except (KeyError, IndexError):
         return ""
 
