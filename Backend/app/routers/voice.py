@@ -403,13 +403,17 @@ async def ws_voice_demo(
     async def do_tts_stream(text: str) -> None:
         abort_event.clear()
         try:
+            print(f"[TTS] synthesizing: {text[:80]!r}", flush=True)
             audio_bytes = await synthesize_speech(text)
+            print(f"[TTS] got {len(audio_bytes)} bytes | abort={abort_event.is_set()}", flush=True)
             if not abort_event.is_set():
                 await websocket.send_bytes(audio_bytes)
                 await websocket.send_json({"type": "audio_done"})
+                print(f"[TTS] sent binary+audio_done", flush=True)
         except asyncio.CancelledError:
-            pass
-        except Exception:
+            print(f"[TTS] cancelled", flush=True)
+        except Exception as e:
+            print(f"[TTS] error: {e}", flush=True)
             try:
                 if not abort_event.is_set():
                     await websocket.send_json({"type": "audio_done"})
@@ -470,7 +474,9 @@ async def ws_voice_demo(
                 conversation_with_turn = list(conversation) + [{"speaker": "engineer", "message": transcript}]
                 try:
                     ai_text = await generate_prospect_response(conversation_with_turn, client_ctx)
+                    print(f"[LLM] ai_text={ai_text!r}", flush=True)
                 except Exception as exc:
+                    print(f"[LLM] error: {exc}", flush=True)
                     await websocket.send_json({"type": "error", "message": f"AI response failed: {exc}"})
                     continue
 
