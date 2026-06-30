@@ -196,7 +196,7 @@ export function DemoVoiceAssessment({ clientId, clientName }: Props) {
 
   // WebSocket + streaming audio
   const wsRef = useRef<WebSocket | null>(null)
-  const audioChunksRef = useRef<Uint8Array[]>([])
+  const audioChunksRef = useRef<Blob[]>([])
 
   // Interrupt detection
   const interruptRafRef = useRef<number | null>(null)
@@ -305,8 +305,7 @@ export function DemoVoiceAssessment({ clientId, clientName }: Props) {
 
   const handleWsMessage = useCallback(async (event: MessageEvent) => {
     if (event.data instanceof Blob) {
-      const buffer = await event.data.arrayBuffer()
-      audioChunksRef.current.push(new Uint8Array(buffer))
+      audioChunksRef.current.push(event.data)
       return
     }
 
@@ -330,10 +329,7 @@ export function DemoVoiceAssessment({ clientId, clientName }: Props) {
 
     } else if (msg.type === 'audio_done') {
       if (audioChunksRef.current.length > 0 && phaseRef.current !== 'ending' && phaseRef.current !== 'scored') {
-        const blob = new Blob(
-          audioChunksRef.current.map(c => c.buffer as ArrayBuffer),
-          { type: 'audio/mpeg' },
-        )
+        const blob = new Blob(audioChunksRef.current, { type: 'audio/mpeg' })
         audioChunksRef.current = []
         const url = URL.createObjectURL(blob)
         setPhaseSync('ai-speaking')
