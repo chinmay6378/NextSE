@@ -124,7 +124,7 @@ async def transcribe_audio(audio_bytes: bytes, mime_type: str = "audio/webm") ->
                 "model": "nova-2",
                 "smart_format": "true",
                 "punctuate": "true",
-                "language": "en",
+                "detect_language": "true",
             },
             headers={
                 "Authorization": f"Token {settings.deepgram_api_key}",
@@ -176,7 +176,7 @@ def _prospect_messages(conversation: list[dict], client_context: str) -> list[di
                 "You are professional, busy, and appropriately skeptical — but fair and open if they make a good point.\n\n"
                 "RULES:\n"
                 "1. Reply in 1-3 complete sentences. Be direct. No filler words.\n"
-                "2. Speak naturally in professional English — like a real senior executive on a call.\n"
+                "2. Respond in the same language the caller uses. If they speak Hindi, reply in Hindi. If they use Hinglish, match that. If English, use professional English.\n"
                 "3. Ask sharp, specific questions: ROI, implementation effort, integration, support model.\n"
                 "4. Push back on vague claims — ask for specifics or proof.\n"
                 "5. Raise realistic objections: cost, existing vendors, team bandwidth, timelines.\n"
