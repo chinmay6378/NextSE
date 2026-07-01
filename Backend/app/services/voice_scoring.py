@@ -27,11 +27,11 @@ _groq = AsyncGroq(api_key=settings.groq_api_key)
 OPENING_PROMPT = "Hello? Kaun bol raha hai?"
 _ELEVENLABS_VOICE_ID = "codoBx1vrQVwrVQylqGj"
 
-# Shared voice settings — high stability prevents tone drift between calls
+# High stability + similarity_boost lock the voice character across all turns
 _TTS_VOICE_SETTINGS = {
-    "stability": 0.75,        # was 0.4 — low stability caused tone to shift each call
-    "similarity_boost": 0.85, # was 0.75 — keeps voice character consistent
-    "style": 0.0,             # disable style exaggeration for professional tone
+    "stability": 0.90,
+    "similarity_boost": 0.95,
+    "style": 0.0,
     "use_speaker_boost": True,
     "speed": 1.0,
 }
