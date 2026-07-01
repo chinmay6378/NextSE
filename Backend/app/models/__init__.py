@@ -8,6 +8,7 @@ from app.models.client import (
     SalesPitch,
     StudyMaterial,
 )
+from app.models.client_chunk import ClientChunk
 from app.models.llm_log import LLMGenerationLog
 from app.models.profile import Profile
 from app.models.testing import (
@@ -26,6 +27,7 @@ __all__ = [
     "Profile",
     "Client",
     "ClientFile",
+    "ClientChunk",
     "ClientCustomPrompt",
     "ClientProfileGenerated",
     "StudyMaterial",

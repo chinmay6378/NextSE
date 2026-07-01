@@ -5,9 +5,10 @@ import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   BookOpen, Building2, ChevronRight, CheckCircle2, ExternalLink, FileText,
-  FlipHorizontal, Megaphone, Play, X,
+  FlipHorizontal, Megaphone, MessageCircle, Play, X,
 } from 'lucide-react'
 import { MarkdownRenderer } from '@/components/markdown-renderer'
+import { ClientChatbot } from '@/components/client-chatbot'
 
 import {
   getEngineerProgress, getSalesPitch, getStudyMaterial, updateEngineerProgress,
@@ -21,7 +22,7 @@ interface ClientLearningProps {
   clientName: string
 }
 
-type ActiveTab = 'profile' | 'study' | 'pitch'
+type ActiveTab = 'profile' | 'study' | 'pitch' | 'chat'
 
 type SelectedItem =
   | { kind: 'module';      sectionId: string; title: string; content: string }
@@ -41,6 +42,7 @@ const TABS: { id: ActiveTab; label: string; icon: typeof BookOpen }[] = [
   { id: 'profile', label: 'Client Profile', icon: Building2 },
   { id: 'study',   label: 'Study Material', icon: BookOpen },
   { id: 'pitch',   label: 'Sales Pitch',    icon: Megaphone },
+  { id: 'chat',    label: 'Ask AI',         icon: MessageCircle },
 ]
 
 export function ClientLearning({ clientId, clientName }: ClientLearningProps) {
@@ -457,6 +459,18 @@ export function ClientLearning({ clientId, clientName }: ClientLearningProps) {
 
             </div>
           )}
+        </motion.div>
+      )}
+
+      {/* ── ASK AI TAB ── */}
+      {activeTab === 'chat' && (
+        <motion.div
+          key="chat-tab"
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
+        >
+          <ClientChatbot clientId={clientId} clientName={clientName} />
         </motion.div>
       )}
 

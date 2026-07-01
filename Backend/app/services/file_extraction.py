@@ -22,7 +22,8 @@ class ExtractionError(Exception):
 
 async def process_client_file(client_file_id: uuid.UUID) -> None:
     """Background task: download the uploaded file from Storage, extract its
-    text, and persist extracted_text + extraction_status onto the row."""
+    text, persist it, then index it for RAG search."""
+    extraction_ok = False
     async with AsyncSessionLocal() as session:
         row = await session.get(ClientFile, client_file_id)
         if row is None:
@@ -31,11 +32,16 @@ async def process_client_file(client_file_id: uuid.UUID) -> None:
             content = await storage.download_file(row.storage_path)
             row.extracted_text = extract_text(content, row.file_name, row.mime_type)
             row.extraction_status = "done"
+            extraction_ok = True
         except Exception as exc:  # noqa: BLE001 - any failure just marks the file failed
             row.extraction_status = "failed"
             row.extracted_text = None
             _ = exc
         await session.commit()
+
+    if extraction_ok:
+        from app.services.rag_service import index_client_file
+        await index_client_file(client_file_id)
 
 
 def extract_text(content: bytes, file_name: str, mime_type: str) -> str:
