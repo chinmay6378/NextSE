@@ -279,6 +279,13 @@ export function ClientLearning({ clientId, clientName }: ClientLearningProps) {
               <p className="text-foreground font-semibold mb-1.5">Generation failed</p>
               <p className="text-muted-foreground text-sm">Contact your admin to regenerate study material for {clientName}.</p>
             </div>
+          ) : !content && studyMaterial?.content_markdown ? (
+            /* content_json is null but markdown exists — render markdown directly */
+            <div className="bg-card border border-border rounded-2xl p-6">
+              <MarkdownRenderer className="prose prose-sm max-w-none">
+                {studyMaterial.content_markdown}
+              </MarkdownRenderer>
+            </div>
           ) : !content ? (
             <div className="text-center py-16 bg-card border border-border rounded-2xl">
               <div className="w-14 h-14 rounded-2xl bg-muted flex items-center justify-center mx-auto mb-4">
