@@ -72,6 +72,7 @@ export function TestFlow() {
   const [result, setResult] = useState<MCQResult | null>(null)
   const [startError, setStartError] = useState<string | null>(null)
   const [currentLevel, setCurrentLevel] = useState<number>(1)
+  const [autoRedirectCountdown, setAutoRedirectCountdown] = useState<number | null>(null)
 
   // Proctoring state
   const [examStarted, setExamStarted] = useState(false)
@@ -204,6 +205,23 @@ export function TestFlow() {
       return () => clearTimeout(t)
     }
   }, [autoSubmitting, submitMutation.isPending, doSubmit])
+
+  // Auto-redirect to AI Pitch Test after MCQ pass
+  useEffect(() => {
+    if (stage !== 'result' || !result?.passed) return
+    setAutoRedirectCountdown(5)
+    const interval = setInterval(() => {
+      setAutoRedirectCountdown((prev) => {
+        if (prev === null || prev <= 1) {
+          clearInterval(interval)
+          setStage('voice')
+          return null
+        }
+        return prev - 1
+      })
+    }, 1000)
+    return () => clearInterval(interval)
+  }, [stage, result?.passed])
 
   const handleStart = (request: TestRequest) => {
     setActiveRequest(request)
@@ -821,11 +839,13 @@ export function TestFlow() {
                     transition={{ delay: 0.5 }}
                     whileHover={{ scale: 1.01 }}
                     whileTap={{ scale: 0.98 }}
-                    onClick={() => setStage('voice')}
+                    onClick={() => { setAutoRedirectCountdown(null); setStage('voice') }}
                     className="w-full py-3.5 rounded-xl font-bold text-sm text-white transition-all flex items-center justify-center gap-2"
                     style={{ background: 'linear-gradient(135deg, #7c3aed, #4f46e5)' }}
                   >
-                    Start AI Pitch Test →
+                    {autoRedirectCountdown !== null
+                      ? `Starting AI Pitch Test in ${autoRedirectCountdown}s…`
+                      : 'Start AI Pitch Test →'}
                   </motion.button>
                 </>
               ) : (
