@@ -6,7 +6,7 @@ from sqlalchemy import func, select
 
 from app.crud import get_latest_version, get_visible_client
 from app.deps import AdminProfile, CurrentProfile, DbSession
-from app.models import Client, ClientFile, ClientProfileGenerated, SalesPitch, StudyMaterial, TestRequest
+from app.models import Client, ClientFile, ClientProfileGenerated, SalesPitch, StudyMaterial
 from app.schemas.client import (
     ClientCreate,
     ClientDetailOut,
@@ -51,8 +51,7 @@ async def list_clients(
 ) -> list[Client]:
     query = select(Client)
     if profile.role == "engineer":
-        assigned_ids = select(TestRequest.client_id).where(TestRequest.engineer_id == profile.id)
-        query = query.where(Client.status == "published").where(Client.id.in_(assigned_ids))
+        query = query.where(Client.status == "published")
     elif profile.role != "admin":
         query = query.where(Client.status == "published")
     elif status_filter:

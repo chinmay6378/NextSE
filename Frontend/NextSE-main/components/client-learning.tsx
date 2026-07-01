@@ -245,7 +245,15 @@ export function ClientLearning({ clientId, clientName }: ClientLearningProps) {
           </div>
 
           {/* Error / generating / empty states */}
-          {materialIsError ? (
+          {materialLoading ? (
+            <div className="flex justify-center py-16">
+              <motion.div
+                animate={{ rotate: 360 }}
+                transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+                className="w-8 h-8 border-2 border-border border-t-primary rounded-full"
+              />
+            </div>
+          ) : materialIsError ? (
             <div className="text-center py-16 bg-card border border-border rounded-2xl">
               <div className="w-14 h-14 rounded-2xl bg-amber-50 border border-amber-200 flex items-center justify-center mx-auto mb-4">
                 <BookOpen className="text-amber-500" size={22} />
