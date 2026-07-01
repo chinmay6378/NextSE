@@ -598,9 +598,9 @@ export function ClientLearning({ clientId, clientName }: ClientLearningProps) {
                     </AnimatePresence>
                   </div>
                 ) : (
-                  <div className="text-sm text-foreground whitespace-pre-wrap leading-relaxed">
+                  <MarkdownRenderer className="prose prose-sm max-w-none">
                     {selected.content}
-                  </div>
+                  </MarkdownRenderer>
                 )}
 
                 <div className="flex gap-3 mt-7">
