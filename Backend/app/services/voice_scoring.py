@@ -124,7 +124,7 @@ async def transcribe_audio(audio_bytes: bytes, mime_type: str = "audio/webm") ->
                 "model": "nova-2",
                 "smart_format": "true",
                 "punctuate": "true",
-                "language": "hi",
+                "detect_language": "true",
             },
             headers={
                 "Authorization": f"Token {settings.deepgram_api_key}",

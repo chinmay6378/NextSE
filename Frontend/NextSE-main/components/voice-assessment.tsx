@@ -15,8 +15,9 @@ import { endVoiceSession, startVoiceSession, submitVoiceTurn } from '@/lib/api/v
 import type { VoiceScoreOut, VoiceTranscriptEntry } from '@/lib/api/types'
 
 const TURN_SECONDS = 120
+const MAX_TURNS = 12
 const SILENCE_THRESHOLD = 0.025
-const SILENCE_GRACE_MS = 1000       // was 3500 — biggest latency cut
+const SILENCE_GRACE_MS = 2000
 const MIN_RECORDING_MS = 800        // was 3000
 const INTERRUPT_THRESHOLD = 0.04
 const INTERRUPT_DURATION_MS = 180   // sustained speech ms before barge-in
@@ -174,6 +175,7 @@ export function VoiceAssessment({ testRequestId, clientName, onDone }: Props) {
 
   const startListeningRef = useRef<() => Promise<void>>(() => Promise.resolve())
   const stopAndSendRef = useRef<() => Promise<void>>(() => Promise.resolve())
+  const handleEndRef = useRef<() => Promise<void>>(() => Promise.resolve())
 
   const setPhaseSync = useCallback((p: Phase) => {
     phaseRef.current = p
@@ -295,6 +297,10 @@ export function VoiceAssessment({ testRequestId, clientName, onDone }: Props) {
       }
 
       submittingRef.current = false
+      if (result.turn_count >= MAX_TURNS && phaseRef.current !== 'ending' && phaseRef.current !== 'scored') {
+        await handleEndRef.current()
+        return
+      }
       if (phaseRef.current !== 'ending' && phaseRef.current !== 'scored') {
         await startListeningRef.current()
       }
@@ -405,6 +411,7 @@ export function VoiceAssessment({ testRequestId, clientName, onDone }: Props) {
 
   useEffect(() => { stopAndSendRef.current = stopAndSend }, [stopAndSend])
   useEffect(() => { startListeningRef.current = startListening }, [startListening])
+  useEffect(() => { handleEndRef.current = handleEnd })
 
   useEffect(() => {
     startVoiceSession(testRequestId)
