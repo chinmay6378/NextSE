@@ -16,11 +16,11 @@ import type { VoiceScoreOut, VoiceTranscriptEntry } from '@/lib/api/types'
 
 const TURN_SECONDS = 120
 const MAX_TURNS = 12
-const SILENCE_THRESHOLD = 0.025
+const SILENCE_THRESHOLD = 0.05      // raised: ignore ambient noise
 const SILENCE_GRACE_MS = 2000
-const MIN_RECORDING_MS = 800        // was 3000
-const INTERRUPT_THRESHOLD = 0.04
-const INTERRUPT_DURATION_MS = 180   // sustained speech ms before barge-in
+const MIN_RECORDING_MS = 1500       // must record at least 1.5s of speech
+const INTERRUPT_THRESHOLD = 0.07    // raised: only real speech interrupts AI
+const INTERRUPT_DURATION_MS = 250   // sustained speech ms before barge-in
 
 interface Props {
   testRequestId: string
