@@ -298,7 +298,7 @@ export function ClientLearning({ clientId, clientName }: ClientLearningProps) {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
 
               {/* Modules */}
-              <motion.section variants={item} className="space-y-3">
+              <motion.section initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.42, ease: [0.16, 1, 0.3, 1] }} className="space-y-3">
                 <div className="flex items-center gap-2">
                   <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-indigo-400 to-blue-500 flex items-center justify-center">
                     <BookOpen size={13} className="text-white" />
@@ -336,7 +336,7 @@ export function ClientLearning({ clientId, clientName }: ClientLearningProps) {
               </motion.section>
 
               {/* Flashcards */}
-              <motion.section variants={item} className="space-y-3">
+              <motion.section initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.42, delay: 0.07, ease: [0.16, 1, 0.3, 1] }} className="space-y-3">
                 <div className="flex items-center gap-2">
                   <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-violet-400 to-purple-500 flex items-center justify-center">
                     <FlipHorizontal size={13} className="text-white" />
@@ -373,7 +373,7 @@ export function ClientLearning({ clientId, clientName }: ClientLearningProps) {
 
               {/* Cheat Sheet */}
               {cheatSheet && (
-                <motion.section variants={item} className="space-y-3">
+                <motion.section initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.42, delay: 0.14, ease: [0.16, 1, 0.3, 1] }} className="space-y-3">
                   <div className="flex items-center gap-2">
                     <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center">
                       <FileText size={13} className="text-white" />
@@ -401,7 +401,7 @@ export function ClientLearning({ clientId, clientName }: ClientLearningProps) {
 
               {/* YouTube Videos */}
               {youtubeVideos.length > 0 && (
-                <motion.section variants={item} className="space-y-3 md:col-span-2">
+                <motion.section initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.42, delay: 0.21, ease: [0.16, 1, 0.3, 1] }} className="space-y-3 md:col-span-2">
                   <div className="flex items-center gap-2">
                     <div className="w-7 h-7 rounded-lg bg-red-600 flex items-center justify-center">
                       <Play size={13} className="text-white" fill="white" />
