@@ -50,7 +50,10 @@ async def _client_context(db: AsyncSession, client_id: uuid.UUID) -> str:
     client = await db.get(Client, client_id)
     if client is None:
         return "unknown client"
+    target = ", ".join(str(t) for t in client.target_industries) if client.target_industries else ""
     context = f"{client.name} (industry: {client.industry})"
+    if target:
+        context += f" | sells_to: {target}"
     profile = (
         await db.execute(
             select(ClientProfileGenerated)

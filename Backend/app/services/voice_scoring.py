@@ -161,10 +161,29 @@ def _extract_company_and_industry(client_context: str) -> tuple[str, str]:
         if "(" in client_context:
             company = client_context.split("(")[0].strip()
         if "industry:" in client_context:
-            industry = client_context.split("industry:")[1].split(")")[0].strip()
+            industry = client_context.split("industry:")[1].split(")")[0].split("|")[0].strip()
     except Exception:
         pass
     return company, industry
+
+
+def _extract_client_info(client_context: str) -> tuple[str, str, str]:
+    """Returns (seller_company, seller_industry, prospect_industry).
+
+    prospect_industry is the first target industry the seller sells to.
+    Falls back to seller_industry if no target industries are configured.
+    """
+    seller_company, seller_industry = _extract_company_and_industry(client_context)
+    prospect_industry = seller_industry
+    try:
+        if "sells_to:" in client_context:
+            raw = client_context.split("sells_to:")[1].split("\n")[0].strip()
+            first_target = raw.split(",")[0].strip()
+            if first_target:
+                prospect_industry = first_target
+    except Exception:
+        pass
+    return seller_company, seller_industry, prospect_industry
 
 
 _SALES_PITCH_PERSONA_TEMPLATE = """\
@@ -274,36 +293,36 @@ DIFFICULTY: {difficulty_level}
 
 
 def _build_prospect_system_prompt(client_context: str) -> str:
-    company, industry = _extract_company_and_industry(client_context)
+    seller_company, seller_industry, prospect_industry = _extract_client_info(client_context)
     return _SALES_PITCH_PERSONA_TEMPLATE.format(
         name="Rajiv Sharma",
-        job_title="VP of Operations",
-        company_name=company,
+        job_title="Purchase Manager",
+        company_name=f"a {prospect_industry} company",
         company_size="mid-sized",
-        industry=industry,
-        department="Operations & Procurement",
-        who_you_report_to="the Managing Director",
-        current_tool_or_process=f"manual processes and a mix of existing vendors in the {industry} space",
-        current_problems="inconsistent quality, delayed deliveries, and no real visibility into vendor performance or costs",
-        budget_details_and_approval_process="moderate discretionary budget; anything above ₹5 lakh requires MD sign-off; new vendor onboarding needs at least 2-3 weeks",
-        fiscal_or_seasonal_constraints="Q4 budget review is 6 weeks away; new vendor onboarding is typically frozen in December",
-        primary_pain=f"unpredictable lead times from current vendors causing downstream delays in {industry} operations",
-        secondary_pain="difficulty maintaining compliance documentation and tracking vendor SLAs across the team",
-        non_priorities="brand prestige, flashy dashboards, or AI buzzwords — you care about reliability, price, and on-time delivery",
-        surface_objection="We're already working with vendors we know and trust. What exactly are you offering that's different?",
-        real_objection="I've been burned before by vendors who over-promise during the pitch and under-deliver after the contract is signed. I'm not going through that again.",
-        hidden_objection="I personally recommended our current primary vendor to the MD two years ago. If I switch and it goes wrong, it reflects on my judgment.",
-        personality_traits="Direct, analytically minded, time-poor, mildly skeptical of unsolicited sales calls",
-        speaking_style="Short professional sentences, asks sharp follow-up questions, doesn't waste words, occasionally impatient",
-        patience_level="Medium",
-        win_condition="Agree to a structured pilot or a formal demo with the MD present within the next 2 weeks",
-        lose_condition="Say 'Send me something on email' or 'We'll circle back after our Q4 review' and end the call",
+        industry=prospect_industry,
+        department="Purchase & Operations",
+        who_you_report_to="the Managing Director / Owner",
+        current_tool_or_process=f"existing suppliers and vendor relationships in the {prospect_industry} space",
+        current_problems=f"inconsistent material quality, delayed deliveries, and difficulty finding reliable {seller_industry} suppliers",
+        budget_details_and_approval_process="moderate purchase budget; orders above ₹5 lakh need MD approval; new vendor trials require at least one sample order first",
+        fiscal_or_seasonal_constraints="Q4 budget review in 6 weeks; prefer to lock in annual vendor contracts before March",
+        primary_pain=f"current {seller_industry} suppliers are unreliable on delivery timelines, causing production holdups",
+        secondary_pain="quality inconsistency across batches forces rework and increases rejection rates",
+        non_priorities="brand name or flashy branding — you care about consistent quality, price, and on-time delivery",
+        surface_objection=f"We already have suppliers for this. Why should I consider {seller_company}?",
+        real_objection="Last time we tried a new vendor they were great for the first two orders, then quality dropped. How do I know you'll be consistent?",
+        hidden_objection="I recommended our current primary supplier to the owner personally. Switching feels like admitting that was a mistake.",
+        personality_traits="Practical, price-conscious, values reliability over innovation, skeptical of cold calls",
+        speaking_style="Direct and to the point. Asks about price, MOQ, delivery timelines, and payment terms early. No patience for vague answers.",
+        patience_level="Medium — will cut the call short if the SE is generic or can't answer basic product questions",
+        win_condition=f"Agree to place a trial/sample order from {seller_company} or invite them for a meeting with the owner",
+        lose_condition="Say 'Send me your catalogue and price list on WhatsApp' without committing to anything",
         difficulty_level="Medium",
         difficulty_specific_instructions=(
-            "Be skeptical but genuinely open if the SE demonstrates real industry knowledge "
-            "and asks good discovery questions. Reward good questions with real information. "
-            "Don't make it impossible — make it realistic. A generic pitch gets polite disengagement. "
-            "A specific, insight-driven pitch gets real engagement."
+            f"You are a realistic {prospect_industry} buyer being pitched by a sales engineer from {seller_company}. "
+            "Be skeptical but fair. Generic pitches get short, bored responses. "
+            "If the SE knows the product specs, understands your industry pain, and gives specific answers — open up gradually. "
+            "Ask about grades/specs/MOQ/delivery terms when relevant. This is a real B2B procurement conversation, not a demo."
         ),
     )
 
