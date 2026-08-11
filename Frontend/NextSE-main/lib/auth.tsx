@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react'
 
 import { getMe } from '@/lib/api/auth'
+import { ApiError } from '@/lib/api/client'
 import type { Profile } from '@/lib/api/types'
 import { createClient } from '@/lib/supabase/client'
 
@@ -38,9 +39,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const me = await getMe()
       setProfile(me)
       setRoleCookie(me.role)
-    } catch {
-      setProfile(null)
-      setRoleCookie(null)
+    } catch (err) {
+      // Only clear the profile on a definitive 401 (token genuinely invalid/
+      // expired). Other failures - e.g. a 403 from apiFetch's authHeaders()
+      // racing a background token refresh and momentarily sending no
+      // Authorization header at all - are transient. Wiping the profile for
+      // those breaks role-gated routes until the next successful refresh, so
+      // just keep the last-known-good profile and let that refresh correct it.
+      if (err instanceof ApiError && err.status === 401) {
+        setProfile(null)
+        setRoleCookie(null)
+      }
     }
   }, [])
 
