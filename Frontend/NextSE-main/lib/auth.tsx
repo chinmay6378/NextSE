@@ -49,8 +49,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     let active = true
     let settled = false
 
-    // If getSession() hangs (Supabase token refresh can stall), unblock the UI
-    // after 4 seconds and send the user to /login for a clean re-auth.
+    // If the auth state never settles (Supabase token refresh can stall), unblock
+    // the UI after 4 seconds and send the user to /login for a clean re-auth.
     const safetyTimer = setTimeout(() => {
       if (active && !settled) {
         settled = true
@@ -59,19 +59,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     }, 4000)
 
-    supabase.auth.getSession().then(async ({ data }) => {
-      if (!active) return
-      clearTimeout(safetyTimer)
-      if (!settled) {
-        settled = true
-        setSession(data.session)
-        if (data.session) await loadProfile()
-        setLoading(false)
-      }
-    })
-
+    // onAuthStateChange fires immediately with the current session on subscribe
+    // (in addition to future changes), so this alone covers both the initial
+    // load and subsequent sign-in/sign-out/token-refresh events. Previously this
+    // was paired with a separate getSession().then(...) call that also invoked
+    // loadProfile(), causing two concurrent /me requests on every mount — if the
+    // second one failed for any transient reason, its catch block would null out
+    // a profile that had just loaded correctly a moment earlier.
     const { data: listener } = supabase.auth.onAuthStateChange(async (_event, newSession) => {
       if (!active) return
+      clearTimeout(safetyTimer)
+      settled = true
       setSession(newSession)
       if (newSession) {
         await loadProfile()
@@ -79,6 +77,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setProfile(null)
         setRoleCookie(null)
       }
+      setLoading(false)
     })
 
     return () => {
