@@ -60,7 +60,7 @@ export async function proxy(request: NextRequest) {
       return NextResponse.redirect(url)
     }
 
-    if (pathname.startsWith(MANAGER_PREFIX) && role !== 'manager') {
+    if (pathname.startsWith(MANAGER_PREFIX) && role !== 'manager' && role !== 'admin') {
       const url = request.nextUrl.clone()
       url.pathname = '/dashboard'
       return NextResponse.redirect(url)
