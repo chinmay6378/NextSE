@@ -539,3 +539,31 @@ class GeneratedSalesPitch(BaseModel):
         "Exactly 3 pitch adaptation guides — one per Voss negotiator type: "
         "Analyst, Accommodator, Assertive."
     ))
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Technical Terminology Library
+# ─────────────────────────────────────────────────────────────────────────────
+
+class TerminologyEntry(BaseModel):
+    model_config = _STRICT
+    term: str = Field(description=(
+        "A technical/industry term, engineering jargon word, acronym, or hard-to-understand phrase "
+        "that appears in this client's product documents/catalogue and that a sales engineer would "
+        "need explained — e.g. 'valve', 'MTBF', 'OEE'."
+    ))
+    definition: str = Field(description=(
+        "A clear, simple, one-to-two sentence definition a non-technical or fresher sales engineer "
+        "can immediately understand, written in the context of this client's specific industry and products."
+    ))
+
+
+class GeneratedTechnicalTerminology(BaseModel):
+    model_config = _STRICT
+
+    terms: list[TerminologyEntry] = Field(description=(
+        "15-40 technical terms and hard words drawn from this client's uploaded industry/product documents, "
+        "each with a plain-English definition. Only include terms actually relevant to this client's "
+        "catalogue, products, or industry — no generic filler terms unrelated to the documents. "
+        "Sort roughly by importance/frequency in the documents."
+    ))

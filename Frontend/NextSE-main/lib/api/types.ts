@@ -6,13 +6,14 @@ export interface Profile {
   email: string
   full_name: string
   role: Role
+  archived: boolean
   created_at: string
 }
 
 export type ClientStatus = 'draft' | 'published'
 export type GeneratedStatus = 'generating' | 'ready' | 'edited' | 'failed'
 export type ExtractionStatus = 'pending' | 'done' | 'failed'
-export type GenerationSection = 'profile' | 'study_material' | 'sales_pitch'
+export type GenerationSection = 'profile' | 'study_material' | 'sales_pitch' | 'technical_terminology'
 
 export interface Client {
   id: string
@@ -21,6 +22,7 @@ export interface Client {
   target_industries: string[]
   target_locations: string[]
   status: ClientStatus
+  archived: boolean
   created_by: string
   created_at: string
   updated_at: string
@@ -53,6 +55,7 @@ export interface ClientDetail {
   profile: GeneratedContent | null
   study_material: GeneratedContent | null
   sales_pitch: GeneratedContent | null
+  technical_terminology: GeneratedContent | null
 }
 
 export interface GenerationStatus {
@@ -60,9 +63,11 @@ export interface GenerationStatus {
   profile_status: GeneratedStatus | null
   study_material_status: GeneratedStatus | null
   sales_pitch_status: GeneratedStatus | null
+  terminology_status: GeneratedStatus | null
   profile_error: string | null
   study_material_error: string | null
   sales_pitch_error: string | null
+  terminology_error: string | null
 }
 
 export interface GenerationKickoff {
@@ -70,6 +75,16 @@ export interface GenerationKickoff {
   profile_id: string | null
   study_material_id: string | null
   sales_pitch_id: string | null
+  terminology_id: string | null
+}
+
+export interface TerminologyEntry {
+  term: string
+  definition: string
+}
+
+export interface TechnicalTerminologyContent {
+  terms: TerminologyEntry[]
 }
 
 export interface StudyModule {
@@ -129,7 +144,15 @@ export interface ResultOut {
   communication_score: number | null
   overall_score: number | null
   status: string
+  reviewed_by: string | null
+  reviewer_notes: string | null
+  reviewed_at: string | null
   created_at: string
+}
+
+export interface ResultReviewRequest {
+  status: 'pass' | 'retrain' | 'reject'
+  reviewer_notes?: string | null
 }
 
 export interface MCQQuestion {

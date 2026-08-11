@@ -5,7 +5,14 @@ from sqlalchemy import select
 
 from app.crud import get_latest_version
 from app.deps import AdminProfile, DbSession
-from app.models import Client, ClientCustomPrompt, ClientProfileGenerated, SalesPitch, StudyMaterial
+from app.models import (
+    Client,
+    ClientCustomPrompt,
+    ClientProfileGenerated,
+    SalesPitch,
+    StudyMaterial,
+    TechnicalTerminology,
+)
 from app.schemas.client import GenerateProfileRequest, GenerationStatusOut, RegenerateRequest
 from app.services.generation import run_generation, start_generation
 
@@ -33,13 +40,17 @@ async def generate_profile(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Client not found")
 
     handles = await _kickoff(
-        client_id, payload.custom_prompt, ("profile", "study_material", "sales_pitch"), background_tasks
+        client_id,
+        payload.custom_prompt,
+        ("profile", "study_material", "sales_pitch", "technical_terminology"),
+        background_tasks,
     )
     return {
         "status": "generating",
         "profile_id": handles.profile_id,
         "study_material_id": handles.study_material_id,
         "sales_pitch_id": handles.sales_pitch_id,
+        "terminology_id": handles.terminology_id,
     }
 
 
@@ -50,11 +61,14 @@ async def generation_status(
     profile_row = await get_latest_version(db, ClientProfileGenerated, client_id)
     study_row = await get_latest_version(db, StudyMaterial, client_id)
     pitch_row = await get_latest_version(db, SalesPitch, client_id)
+    terminology_row = await get_latest_version(db, TechnicalTerminology, client_id)
 
-    if profile_row is None and study_row is None and pitch_row is None:
+    if profile_row is None and study_row is None and pitch_row is None and terminology_row is None:
         return GenerationStatusOut(overall_status="not_started")
 
-    statuses = [r.status for r in (profile_row, study_row, pitch_row) if r is not None]
+    statuses = [
+        r.status for r in (profile_row, study_row, pitch_row, terminology_row) if r is not None
+    ]
     if "failed" in statuses:
         overall = "failed"
     elif "generating" in statuses:
@@ -69,9 +83,11 @@ async def generation_status(
         profile_status=profile_row.status if profile_row else None,
         study_material_status=study_row.status if study_row else None,
         sales_pitch_status=pitch_row.status if pitch_row else None,
+        terminology_status=terminology_row.status if terminology_row else None,
         profile_error=profile_row.error_message if profile_row else None,
         study_material_error=study_row.error_message if study_row else None,
         sales_pitch_error=pitch_row.error_message if pitch_row else None,
+        terminology_error=terminology_row.error_message if terminology_row else None,
     )
 
 
@@ -103,11 +119,16 @@ async def regenerate(
             )
         custom_prompt = latest_prompt.prompt_text
 
-    sections = (payload.section,) if payload.section else ("profile", "study_material", "sales_pitch")
+    sections = (
+        (payload.section,)
+        if payload.section
+        else ("profile", "study_material", "sales_pitch", "technical_terminology")
+    )
     handles = await _kickoff(client_id, custom_prompt, sections, background_tasks)
     return {
         "status": "generating",
         "profile_id": handles.profile_id,
         "study_material_id": handles.study_material_id,
         "sales_pitch_id": handles.sales_pitch_id,
+        "terminology_id": handles.terminology_id,
     }

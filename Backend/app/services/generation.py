@@ -26,11 +26,13 @@ from app.models import (
     ClientProfileGenerated,
     SalesPitch,
     StudyMaterial,
+    TechnicalTerminology,
 )
 from app.schemas.generation import (
     GeneratedClientProfile,
     GeneratedSalesPitch,
     GeneratedStudyMaterial,
+    GeneratedTechnicalTerminology,
     ObjectionNote,
 )
 from app.services.openai_client import GenerationFailedError, generate_structured
@@ -606,12 +608,32 @@ SALES_PITCH_SYSTEM_PROMPT = (
 )
 
 
+TERMINOLOGY_SYSTEM_PROMPT = """You are a Technical Documentation Specialist building a glossary for junior sales engineers who are new to this client's industry.
+
+Your job: scan the uploaded documents and extract every technical term, engineering jargon word, acronym, standard/spec name, or generally "hard word" that a non-technical or fresher sales engineer would not immediately understand — the kind of vocabulary that appears in this client's product catalogue, spec sheets, or industry materials.
+
+RULES:
+1. Only include terms that are actually relevant to THIS client's products, industry, or documents — do not include generic business vocabulary (e.g. "revenue", "customer") or terms unrelated to the domain.
+2. Prefer terms that would realistically block a fresher SE from understanding a conversation with this client's prospects: material names, component names, industry acronyms, units/measurements, standards/certifications, process names, and technical specifications.
+3. Write each definition in plain, simple English — one to two sentences, no circular definitions, no unexplained jargon inside the definition itself.
+4. Ground every term in the actual document content; do not invent terms that never appear in or relate to the documents.
+5. Aim for 15-40 terms depending on how much technical vocabulary the documents actually contain — do not pad with irrelevant terms to hit a count.
+
+Example: term "valve" → definition "A device in a pipe or tube that controls the flow of air, liquid, or gas, letting it move in one direction only or shutting it off completely.\""""
+
+
+def _terminology_to_markdown(t: GeneratedTechnicalTerminology) -> str:
+    entries = "\n".join(f"- **{e.term}**: {e.definition}" for e in t.terms)
+    return "## Technical Terminology\n\n" + entries
+
+
 @dataclass
 class GenerationHandles:
     prompt_id: uuid.UUID
     profile_id: uuid.UUID | None = None
     study_material_id: uuid.UUID | None = None
     sales_pitch_id: uuid.UUID | None = None
+    terminology_id: uuid.UUID | None = None
 
 
 async def _next_version(session: AsyncSession, model, client_id: uuid.UUID) -> int:
@@ -623,7 +645,7 @@ async def _next_version(session: AsyncSession, model, client_id: uuid.UUID) -> i
 async def start_generation(
     client_id: uuid.UUID,
     custom_prompt: str,
-    sections: tuple[str, ...] = ("profile", "study_material", "sales_pitch"),
+    sections: tuple[str, ...] = ("profile", "study_material", "sales_pitch", "technical_terminology"),
 ) -> GenerationHandles:
     async with AsyncSessionLocal() as session:
         prompt_row = ClientCustomPrompt(client_id=client_id, prompt_text=custom_prompt)
@@ -662,6 +684,16 @@ async def start_generation(
             session.add(row)
             await session.flush()
             handles.sales_pitch_id = row.id
+
+        if "technical_terminology" in sections:
+            row = TechnicalTerminology(
+                client_id=client_id,
+                version=await _next_version(session, TechnicalTerminology, client_id),
+                status="generating",
+            )
+            session.add(row)
+            await session.flush()
+            handles.terminology_id = row.id
 
         await session.commit()
         return handles
@@ -955,6 +987,19 @@ async def run_generation(client_id: uuid.UUID, handles: GenerationHandles, custo
                 purpose="sales_pitch",
                 client_id=client_id,
                 to_markdown=_sales_pitch_to_markdown,
+            )
+        )
+    if handles.terminology_id:
+        tasks.append(
+            _run_section(
+                model=TechnicalTerminology,
+                row_id=handles.terminology_id,
+                schema=GeneratedTechnicalTerminology,
+                system_prompt=TERMINOLOGY_SYSTEM_PROMPT,
+                user_prompt=user_prompt,
+                purpose="technical_terminology",
+                client_id=client_id,
+                to_markdown=_terminology_to_markdown,
             )
         )
 

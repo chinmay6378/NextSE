@@ -15,6 +15,7 @@ import {
   Factory,
   FileText,
   Heart,
+  Library,
   Loader2,
   Megaphone,
   Package,
@@ -43,6 +44,7 @@ import {
   getClient,
   getFileSignedUrl,
   patchProfile,
+  patchTerminology,
   publishClient,
   regenerate,
   uploadClientFiles,
@@ -110,10 +112,11 @@ function getVisual(industry: string): IndustryVisual {
 
 // ── Tab config ──────────────────────────────────────────────────────────────
 const TAB_CONFIG: Record<Tab, { label: string; icon: React.ElementType }> = {
-  profile:        { label: 'Client Profile',  icon: User },
-  study_material: { label: 'Study Material',  icon: BookOpen },
-  sales_pitch:    { label: 'Sales Pitch',     icon: Megaphone },
-  test_requests:  { label: 'Test Requests',   icon: ClipboardList },
+  profile:               { label: 'Client Profile',        icon: User },
+  study_material:        { label: 'Study Material',        icon: BookOpen },
+  sales_pitch:           { label: 'Sales Pitch',           icon: Megaphone },
+  technical_terminology: { label: 'Technical Terminology', icon: Library },
+  test_requests:         { label: 'Test Requests',         icon: ClipboardList },
 }
 
 // ── Status badge ────────────────────────────────────────────────────────────
@@ -170,7 +173,9 @@ export default function ClientDetailPage({ params }: { params: Promise<{ clientI
     queryFn: () => getClient(clientId),
     refetchInterval: (query) => {
       const d = query.state.data
-      const generating = [d?.profile, d?.study_material, d?.sales_pitch].some(s => s?.status === 'generating')
+      const generating = [d?.profile, d?.study_material, d?.sales_pitch, d?.technical_terminology].some(
+        s => s?.status === 'generating'
+      )
       return generating ? 2000 : false
     },
   })
@@ -183,7 +188,7 @@ export default function ClientDetailPage({ params }: { params: Promise<{ clientI
 
   const { data: engineers } = useQuery({
     queryKey: ['engineers'],
-    queryFn: listEngineers,
+    queryFn: () => listEngineers(),
     enabled: tab === 'test_requests',
   })
 
@@ -206,8 +211,11 @@ export default function ClientDetailPage({ params }: { params: Promise<{ clientI
     onError: (e) => toast.error(e instanceof ApiError ? e.message : 'Delete failed'),
   })
   const patchMutation = useMutation({
-    mutationFn: (md: string) => patchProfile(clientId, { content_markdown: md }),
-    onSuccess: () => { invalidate(); setIsEditing(false); toast.success('Profile updated') },
+    mutationFn: (md: string) =>
+      tab === 'technical_terminology'
+        ? patchTerminology(clientId, { content_markdown: md })
+        : patchProfile(clientId, { content_markdown: md }),
+    onSuccess: () => { invalidate(); setIsEditing(false); toast.success('Updated') },
     onError: (e) => toast.error(e instanceof ApiError ? e.message : 'Update failed'),
   })
   const regenerateMutation = useMutation({
@@ -270,15 +278,17 @@ export default function ClientDetailPage({ params }: { params: Promise<{ clientI
   const IndustryIcon = visual.icon
 
   const sectionContent: Record<GenerationSection, GeneratedContent | null> = {
-    profile:        data.profile,
-    study_material: data.study_material,
-    sales_pitch:    data.sales_pitch,
+    profile:                data.profile,
+    study_material:         data.study_material,
+    sales_pitch:            data.sales_pitch,
+    technical_terminology:  data.technical_terminology,
   }
   const currentSection = tab !== 'test_requests' ? sectionContent[tab as GenerationSection] : null
-  const readySections = (['profile', 'study_material', 'sales_pitch'] as const).filter(
+  const ALL_SECTIONS = ['profile', 'study_material', 'sales_pitch', 'technical_terminology'] as const
+  const readySections = ALL_SECTIONS.filter(
     k => ['ready', 'edited'].includes(sectionContent[k]?.status ?? '')
   ).length
-  const allReady = readySections === 3
+  const allReady = readySections === ALL_SECTIONS.length
 
   const handleFilesSelected = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files ?? [])
@@ -353,8 +363,8 @@ export default function ClientDetailPage({ params }: { params: Promise<{ clientI
               </h1>
               <p className="text-white/60 text-sm mt-1.5">
                 {data.files.length} document{data.files.length !== 1 ? 's' : ''} ·{' '}
-                <span className={readySections === 3 ? 'text-emerald-300' : 'text-white/60'}>
-                  {readySections}/3 sections ready
+                <span className={allReady ? 'text-emerald-300' : 'text-white/60'}>
+                  {readySections}/{ALL_SECTIONS.length} sections ready
                 </span>
               </p>
             </div>
@@ -367,7 +377,7 @@ export default function ClientDetailPage({ params }: { params: Promise<{ clientI
               whileTap={{ scale: 0.97 }}
               onClick={() => publishMutation.mutate()}
               disabled={!allReady || publishMutation.isPending}
-              title={allReady ? 'Publish to engineers' : 'All 3 sections must be ready first'}
+              title={allReady ? 'Publish to engineers' : `All ${ALL_SECTIONS.length} sections must be ready first`}
               className="flex items-center gap-2 px-6 py-3 rounded-xl bg-white text-gray-900 font-semibold text-sm shadow-lg disabled:opacity-40 disabled:cursor-not-allowed hover:shadow-xl transition-shadow"
             >
               {publishMutation.isPending
@@ -645,7 +655,7 @@ export default function ClientDetailPage({ params }: { params: Promise<{ clientI
       >
         {/* Tab bar */}
         <div className="flex border-b border-border/60 overflow-x-auto">
-          {(['profile', 'study_material', 'sales_pitch', 'test_requests'] as const).map((key) => {
+          {(['profile', 'study_material', 'sales_pitch', 'technical_terminology', 'test_requests'] as const).map((key) => {
             const { label, icon: Icon } = TAB_CONFIG[key]
             const active = tab === key
             return (
@@ -698,7 +708,7 @@ export default function ClientDetailPage({ params }: { params: Promise<{ clientI
                   )}
                 </div>
                 <div className="flex items-center gap-2">
-                  {tab === 'profile' && currentSection?.content_markdown && !isEditing && (
+                  {(tab === 'profile' || tab === 'technical_terminology') && currentSection?.content_markdown && !isEditing && (
                     <button
                       onClick={() => { setDraftMarkdown(currentSection.content_markdown ?? ''); setIsEditing(true) }}
                       className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-muted/60 hover:bg-muted text-xs font-medium transition-colors"

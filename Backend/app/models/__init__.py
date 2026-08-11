@@ -7,6 +7,7 @@ from app.models.client import (
     ClientProfileGenerated,
     SalesPitch,
     StudyMaterial,
+    TechnicalTerminology,
 )
 from app.models.client_chunk import ClientChunk
 from app.models.llm_log import LLMGenerationLog
@@ -32,6 +33,7 @@ __all__ = [
     "ClientProfileGenerated",
     "StudyMaterial",
     "SalesPitch",
+    "TechnicalTerminology",
     "EngineerProgress",
     "TestRequest",
     "MCQSet",

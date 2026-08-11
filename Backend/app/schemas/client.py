@@ -7,7 +7,7 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 ClientStatus = Literal["draft", "published"]
 GeneratedStatus = Literal["generating", "ready", "edited", "failed"]
 ExtractionStatus = Literal["pending", "done", "failed"]
-Section = Literal["profile", "study_material", "sales_pitch"]
+Section = Literal["profile", "study_material", "sales_pitch", "technical_terminology"]
 
 
 class ClientCreate(BaseModel):
@@ -26,6 +26,7 @@ class ClientOut(BaseModel):
     target_industries: list[str]
     target_locations: list[str]
     status: ClientStatus
+    archived: bool
     created_by: uuid.UUID
     created_at: datetime
     updated_at: datetime
@@ -62,6 +63,7 @@ class ClientDetailOut(BaseModel):
     profile: GeneratedContentOut | None = None
     study_material: GeneratedContentOut | None = None
     sales_pitch: GeneratedContentOut | None = None
+    technical_terminology: GeneratedContentOut | None = None
 
 
 class GenerateProfileRequest(BaseModel):
@@ -73,9 +75,11 @@ class GenerationStatusOut(BaseModel):
     profile_status: GeneratedStatus | None = None
     study_material_status: GeneratedStatus | None = None
     sales_pitch_status: GeneratedStatus | None = None
+    terminology_status: GeneratedStatus | None = None
     profile_error: str | None = None
     study_material_error: str | None = None
     sales_pitch_error: str | None = None
+    terminology_error: str | None = None
 
 
 class ProfilePatchRequest(BaseModel):

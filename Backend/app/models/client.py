@@ -1,5 +1,6 @@
 import uuid
 
+from sqlalchemy import Boolean
 from sqlalchemy import Enum as SAEnum
 from sqlalchemy import ForeignKey, Integer, String, Text, UniqueConstraint
 from sqlalchemy.dialects.postgresql import JSONB, UUID
@@ -26,6 +27,7 @@ class Client(Base):
     target_industries: Mapped[list] = mapped_column(JSONB, nullable=False, server_default="[]")
     target_locations: Mapped[list] = mapped_column(JSONB, nullable=False, server_default="[]")
     status: Mapped[str] = mapped_column(ClientStatus, nullable=False, server_default="draft")
+    archived: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="false")
     created_by: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("profiles.id"), nullable=False
     )
@@ -108,6 +110,23 @@ class SalesPitch(Base):
         UUID(as_uuid=True), ForeignKey("clients.id", ondelete="CASCADE"), nullable=False, index=True
     )
     version: Mapped[int] = mapped_column(Integer, nullable=False)
+    content_markdown: Mapped[str | None] = mapped_column(Text, nullable=True)
+    status: Mapped[str] = mapped_column(GeneratedContentStatus, nullable=False, server_default="generating")
+    error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at = created_at_col()
+    updated_at = updated_at_col()
+
+
+class TechnicalTerminology(Base):
+    __tablename__ = "technical_terminology"
+    __table_args__ = (UniqueConstraint("client_id", "version", name="uq_technical_terminology_version"),)
+
+    id: Mapped[uuid.UUID] = uuid_pk()
+    client_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("clients.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    version: Mapped[int] = mapped_column(Integer, nullable=False)
+    content_json: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
     content_markdown: Mapped[str | None] = mapped_column(Text, nullable=True)
     status: Mapped[str] = mapped_column(GeneratedContentStatus, nullable=False, server_default="generating")
     error_message: Mapped[str | None] = mapped_column(Text, nullable=True)

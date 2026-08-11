@@ -257,7 +257,7 @@ const EASE: [number, number, number, number] = [0.16, 1, 0.3, 1]
 export default function ControlPanelPage() {
   const { data: engineers = [], isLoading: engLoading } = useQuery({
     queryKey: ['admin-engineers'],
-    queryFn: listEngineers,
+    queryFn: () => listEngineers(),
   })
   const { data: allRequests = [] } = useQuery({
     queryKey: ['admin-all-requests'],

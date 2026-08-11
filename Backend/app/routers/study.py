@@ -7,7 +7,7 @@ from sqlalchemy import select
 
 from app.crud import get_latest_version, get_ready_version, get_visible_client
 from app.deps import AdminProfile, CurrentProfile, DbSession, EngineerProfile
-from app.models import EngineerProgress, SalesPitch, StudyMaterial
+from app.models import EngineerProgress, SalesPitch, StudyMaterial, TechnicalTerminology
 from app.schemas.client import GeneratedContentOut
 from app.schemas.study import EngineerProgressOut, EngineerProgressUpdateRequest
 
@@ -30,6 +30,17 @@ async def get_sales_pitch(client_id: uuid.UUID, db: DbSession, profile: CurrentP
     if pitch is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Sales pitch not generated yet")
     return pitch
+
+
+@router.get("/clients/{client_id}/technical-terminology", response_model=GeneratedContentOut)
+async def get_technical_terminology(
+    client_id: uuid.UUID, db: DbSession, profile: CurrentProfile
+) -> TechnicalTerminology:
+    await get_visible_client(db, profile, client_id)
+    terminology = await get_ready_version(db, TechnicalTerminology, client_id)
+    if terminology is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Technical terminology not generated yet")
+    return terminology
 
 
 async def _get_progress_row(db: DbSession, engineer_id: uuid.UUID, client_id: uuid.UUID) -> EngineerProgress | None:

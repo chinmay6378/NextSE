@@ -1,19 +1,25 @@
 'use client'
 
-import { useQuery } from '@tanstack/react-query'
-import { motion } from 'framer-motion'
+import { useState } from 'react'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { motion, type Variants } from 'framer-motion'
 import {
+  Archive,
+  ArchiveRestore,
   BarChart2,
   ChevronRight,
   Loader2,
+  Trash2,
   Users,
 } from 'lucide-react'
 import Link from 'next/link'
+import { toast } from 'sonner'
 
 import { listAdminResults } from '@/lib/api/results'
-import { listEngineers } from '@/lib/api/tests'
+import { archiveEngineer, deleteEngineer, listEngineers, unarchiveEngineer } from '@/lib/api/tests'
+import { ApiError } from '@/lib/api/client'
 import type { Profile, ResultOut } from '@/lib/api/types'
-import { type Variants } from 'framer-motion'
+import { cn } from '@/lib/utils'
 
 const EASE: [number, number, number, number] = [0.16, 1, 0.3, 1]
 const container: Variants = {
@@ -29,7 +35,25 @@ function getInitials(name: string) {
   return name.split(' ').map((n) => n[0]).slice(0, 2).join('').toUpperCase()
 }
 
-function EngineerCard({ engineer, results }: { engineer: Profile; results: ResultOut[] }) {
+function EngineerCard({
+  engineer,
+  results,
+  confirmingId,
+  setConfirmingId,
+  onArchive,
+  onUnarchive,
+  onDelete,
+  isMutating,
+}: {
+  engineer: Profile
+  results: ResultOut[]
+  confirmingId: string | null
+  setConfirmingId: (id: string | null) => void
+  onArchive: (id: string) => void
+  onUnarchive: (id: string) => void
+  onDelete: (id: string) => void
+  isMutating: boolean
+}) {
   const myResults = results.filter((r) => r.engineer_id === engineer.id)
   const total = myResults.length
   const avg = total
@@ -43,7 +67,10 @@ function EngineerCard({ engineer, results }: { engineer: Profile; results: Resul
     <motion.div
       variants={card}
       whileHover={{ y: -3, boxShadow: '0 16px 40px rgba(0,0,0,0.08)' }}
-      className="bg-card border border-border rounded-2xl p-5 flex items-center gap-4 transition-all duration-200"
+      className={cn(
+        'bg-card border border-border rounded-2xl p-5 flex items-center gap-4 transition-all duration-200',
+        engineer.archived && 'opacity-60'
+      )}
     >
       {/* Avatar */}
       <div className="w-12 h-12 rounded-full bg-gradient-to-br from-orange-400 to-red-500 flex items-center justify-center text-white font-bold text-sm shrink-0 shadow-md">
@@ -52,7 +79,14 @@ function EngineerCard({ engineer, results }: { engineer: Profile; results: Resul
 
       {/* Info */}
       <div className="flex-1 min-w-0">
-        <p className="font-semibold text-foreground truncate">{engineer.full_name}</p>
+        <p className="font-semibold text-foreground truncate flex items-center gap-2">
+          {engineer.full_name}
+          {engineer.archived && (
+            <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground shrink-0">
+              Archived
+            </span>
+          )}
+        </p>
         <p className="text-xs text-muted-foreground truncate">{engineer.email}</p>
       </div>
 
@@ -83,21 +117,74 @@ function EngineerCard({ engineer, results }: { engineer: Profile; results: Resul
         )}
       </div>
 
-      {/* Arrow */}
-      <Link
-        href={`/admin/engineers/${engineer.id}`}
-        className="shrink-0 w-9 h-9 rounded-xl bg-muted hover:bg-primary/10 flex items-center justify-center text-muted-foreground hover:text-primary transition-all"
-      >
-        <ChevronRight size={16} />
-      </Link>
+      {/* Actions */}
+      <div className="flex items-center gap-1.5 shrink-0">
+        {engineer.archived ? (
+          <button
+            onClick={() => onUnarchive(engineer.id)}
+            disabled={isMutating}
+            className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors disabled:opacity-50"
+            title="Unarchive"
+          >
+            <ArchiveRestore size={14} />
+          </button>
+        ) : (
+          <button
+            onClick={() => onArchive(engineer.id)}
+            disabled={isMutating}
+            className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors disabled:opacity-50"
+            title="Archive"
+          >
+            <Archive size={14} />
+          </button>
+        )}
+
+        {confirmingId === engineer.id ? (
+          <div className="flex items-center gap-1.5">
+            <button
+              onClick={() => onDelete(engineer.id)}
+              disabled={isMutating}
+              className="text-[11px] font-semibold px-2.5 py-1 rounded-full border bg-red-50 text-red-600 border-red-200 hover:bg-red-100 transition-colors"
+            >
+              {isMutating ? 'Deleting…' : 'Confirm'}
+            </button>
+            <button
+              onClick={() => setConfirmingId(null)}
+              className="text-[11px] font-semibold px-2.5 py-1 rounded-full border bg-muted text-muted-foreground border-border hover:bg-muted/80 transition-colors"
+            >
+              Cancel
+            </button>
+          </div>
+        ) : (
+          <button
+            onClick={() => setConfirmingId(engineer.id)}
+            className="p-2 rounded-lg text-muted-foreground hover:text-red-500 hover:bg-red-50 transition-colors"
+            title="Delete"
+          >
+            <Trash2 size={14} />
+          </button>
+        )}
+
+        {/* Arrow */}
+        <Link
+          href={`/admin/engineers/${engineer.id}`}
+          className="shrink-0 w-9 h-9 rounded-xl bg-muted hover:bg-primary/10 flex items-center justify-center text-muted-foreground hover:text-primary transition-all"
+        >
+          <ChevronRight size={16} />
+        </Link>
+      </div>
     </motion.div>
   )
 }
 
 export default function EngineersPage() {
+  const queryClient = useQueryClient()
+  const [showArchived, setShowArchived] = useState(false)
+  const [confirmingId, setConfirmingId] = useState<string | null>(null)
+
   const { data: engineers, isLoading: engLoading } = useQuery({
-    queryKey: ['admin-engineers'],
-    queryFn: listEngineers,
+    queryKey: ['admin-engineers', showArchived],
+    queryFn: () => listEngineers({ includeArchived: showArchived }),
   })
 
   const { data: results = [] as ResultOut[] } = useQuery({
@@ -105,21 +192,51 @@ export default function EngineersPage() {
     queryFn: () => listAdminResults(),
   })
 
+  const invalidate = () => queryClient.invalidateQueries({ queryKey: ['admin-engineers'] })
+
+  const archiveMutation = useMutation({
+    mutationFn: (id: string) => archiveEngineer(id),
+    onSuccess: () => { invalidate(); toast.success('Engineer archived') },
+    onError: (e) => toast.error(e instanceof ApiError ? e.message : 'Could not archive'),
+  })
+  const unarchiveMutation = useMutation({
+    mutationFn: (id: string) => unarchiveEngineer(id),
+    onSuccess: () => { invalidate(); toast.success('Engineer unarchived') },
+    onError: (e) => toast.error(e instanceof ApiError ? e.message : 'Could not unarchive'),
+  })
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => deleteEngineer(id),
+    onSuccess: () => { invalidate(); setConfirmingId(null); toast.success('Engineer deleted') },
+    onError: (e) => toast.error(e instanceof ApiError ? e.message : 'Could not delete'),
+  })
+
   const isLoading = engLoading
+  const isMutating = archiveMutation.isPending || unarchiveMutation.isPending || deleteMutation.isPending
 
   return (
     <div className="space-y-7 max-w-4xl">
       {/* Header */}
-      <div className="flex items-center gap-3">
-        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-orange-400 to-red-500 flex items-center justify-center shadow-md">
-          <Users size={18} className="text-white" />
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-orange-400 to-red-500 flex items-center justify-center shadow-md">
+            <Users size={18} className="text-white" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold text-foreground">Sales Engineers</h1>
+            <p className="text-muted-foreground text-sm mt-0.5">
+              {engineers?.length ?? 0} engineers · click a profile to see full activity
+            </p>
+          </div>
         </div>
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">Sales Engineers</h1>
-          <p className="text-muted-foreground text-sm mt-0.5">
-            {engineers?.length ?? 0} engineers · click a profile to see full activity
-          </p>
-        </div>
+        <label className="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer select-none">
+          <input
+            type="checkbox"
+            checked={showArchived}
+            onChange={(e) => setShowArchived(e.target.checked)}
+            className="rounded border-border"
+          />
+          Show archived
+        </label>
       </div>
 
       {/* Summary stat */}
@@ -180,7 +297,17 @@ export default function EngineersPage() {
           className="space-y-3"
         >
           {engineers.map((eng) => (
-            <EngineerCard key={eng.id} engineer={eng} results={results} />
+            <EngineerCard
+              key={eng.id}
+              engineer={eng}
+              results={results}
+              confirmingId={confirmingId}
+              setConfirmingId={setConfirmingId}
+              onArchive={(id) => archiveMutation.mutate(id)}
+              onUnarchive={(id) => unarchiveMutation.mutate(id)}
+              onDelete={(id) => deleteMutation.mutate(id)}
+              isMutating={isMutating}
+            />
           ))}
         </motion.div>
       )}

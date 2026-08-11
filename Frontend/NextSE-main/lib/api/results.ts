@@ -1,5 +1,5 @@
 import { apiFetch } from './client'
-import type { ResultOut } from './types'
+import type { ResultOut, ResultReviewRequest } from './types'
 
 export function listAdminResults(params?: { engineer_id?: string; client_id?: string }) {
   return apiFetch<ResultOut[]>('/admin/results', {
@@ -12,4 +12,11 @@ export function listAdminResults(params?: { engineer_id?: string; client_id?: st
 
 export function listMyResults() {
   return apiFetch<ResultOut[]>('/engineer/results')
+}
+
+export function reviewResult(resultId: string, payload: ResultReviewRequest) {
+  return apiFetch<ResultOut>(`/admin/results/${resultId}/review`, {
+    method: 'PATCH',
+    body: payload,
+  })
 }

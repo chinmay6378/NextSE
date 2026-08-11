@@ -5,24 +5,24 @@ import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   BookOpen, Building2, ChevronRight, CheckCircle2, ExternalLink, FileText,
-  FlipHorizontal, Megaphone, MessageCircle, Play, X,
+  FlipHorizontal, Library, Megaphone, MessageCircle, Play, X,
 } from 'lucide-react'
 import { MarkdownRenderer } from '@/components/markdown-renderer'
 import { ClientChatbot } from '@/components/client-chatbot'
 
 import {
-  getEngineerProgress, getSalesPitch, getStudyMaterial, updateEngineerProgress,
+  getEngineerProgress, getSalesPitch, getStudyMaterial, getTechnicalTerminology, updateEngineerProgress,
 } from '@/lib/api/study'
 import { getClient } from '@/lib/api/clients'
 import { ApiError } from '@/lib/api/client'
-import type { StudyMaterialContent, YoutubeVideo } from '@/lib/api/types'
+import type { StudyMaterialContent, TechnicalTerminologyContent, YoutubeVideo } from '@/lib/api/types'
 
 interface ClientLearningProps {
   clientId: string
   clientName: string
 }
 
-type ActiveTab = 'profile' | 'study' | 'pitch' | 'chat'
+type ActiveTab = 'profile' | 'study' | 'pitch' | 'terms' | 'chat'
 
 type SelectedItem =
   | { kind: 'module';      sectionId: string; title: string; content: string }
@@ -39,10 +39,11 @@ const item = {
 }
 
 const TABS: { id: ActiveTab; label: string; icon: typeof BookOpen }[] = [
-  { id: 'profile', label: 'Client Profile', icon: Building2 },
-  { id: 'study',   label: 'Study Material', icon: BookOpen },
-  { id: 'pitch',   label: 'Sales Pitch',    icon: Megaphone },
-  { id: 'chat',    label: 'Ask AI',         icon: MessageCircle },
+  { id: 'profile', label: 'Client Profile',        icon: Building2 },
+  { id: 'study',   label: 'Study Material',        icon: BookOpen },
+  { id: 'pitch',   label: 'Sales Pitch',           icon: Megaphone },
+  { id: 'terms',   label: 'Technical Terminology', icon: Library },
+  { id: 'chat',    label: 'Ask AI',                icon: MessageCircle },
 ]
 
 export function ClientLearning({ clientId, clientName }: ClientLearningProps) {
@@ -73,6 +74,15 @@ export function ClientLearning({ clientId, clientName }: ClientLearningProps) {
     queryFn: () => getSalesPitch(clientId),
   })
 
+  const { data: terminology } = useQuery({
+    queryKey: ['technical-terminology', clientId],
+    queryFn: () => getTechnicalTerminology(clientId),
+    retry: (count, error) => {
+      if (error instanceof ApiError && error.status === 404) return false
+      return count < 2
+    },
+  })
+
   const { data: progress } = useQuery({
     queryKey: ['engineer-progress', clientId],
     queryFn: () => getEngineerProgress(clientId),
@@ -88,6 +98,8 @@ export function ClientLearning({ clientId, clientName }: ClientLearningProps) {
   const flashcards = content?.flashcards ?? []
   const cheatSheet = content?.cheat_sheet
   const youtubeVideos: YoutubeVideo[] = content?.youtube_videos ?? []
+  const terminologyContent = terminology?.content_json as TechnicalTerminologyContent | undefined
+  const terms = terminologyContent?.terms ?? []
   const studiedSections = progress?.studied_sections ?? {}
   const percentComplete = Math.round(progress?.studied_percent ?? 0)
 
@@ -472,6 +484,47 @@ export function ClientLearning({ clientId, clientName }: ClientLearningProps) {
                 </motion.section>
               )}
 
+            </div>
+          )}
+        </motion.div>
+      )}
+
+      {/* ── TECHNICAL TERMINOLOGY TAB ── */}
+      {activeTab === 'terms' && (
+        <motion.div
+          key="terms-tab"
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
+        >
+          {terms.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {terms.map((entry, idx) => (
+                <motion.div
+                  key={idx}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: idx * 0.03, duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
+                  className="bg-card border border-border rounded-xl p-4"
+                >
+                  <h3 className="font-semibold text-sm text-foreground">{entry.term}</h3>
+                  <p className="text-xs text-muted-foreground mt-1 leading-relaxed">{entry.definition}</p>
+                </motion.div>
+              ))}
+            </div>
+          ) : terminology?.content_markdown ? (
+            <div className="bg-card border border-border rounded-2xl p-6">
+              <MarkdownRenderer className="prose prose-sm max-w-none">
+                {terminology.content_markdown}
+              </MarkdownRenderer>
+            </div>
+          ) : (
+            <div className="text-center py-16 bg-card border border-border rounded-2xl">
+              <div className="w-14 h-14 rounded-2xl bg-muted flex items-center justify-center mx-auto mb-4">
+                <Library className="text-muted-foreground" size={22} />
+              </div>
+              <p className="text-foreground font-semibold mb-1.5">Technical terminology not available</p>
+              <p className="text-muted-foreground text-sm">Ask your admin to generate it for {clientName}.</p>
             </div>
           )}
         </motion.div>

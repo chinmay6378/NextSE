@@ -15,6 +15,7 @@ class ProfileOut(BaseModel):
     email: str
     full_name: str
     role: Role
+    archived: bool
     created_at: datetime
 
 

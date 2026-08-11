@@ -14,6 +14,7 @@ import {
   FileText,
   Globe,
   Heart,
+  Library,
   Loader2,
   MapPin,
   Megaphone,
@@ -716,9 +717,10 @@ function GeneratingPanel({ clientId, onDone }: { clientId: string; onDone: () =>
   })
 
   const sections = [
-    { label: 'Client Profile',  icon: User,      status: status?.profile_status,       error: status?.profile_error },
-    { label: 'Study Material',  icon: BookOpen,  status: status?.study_material_status, error: status?.study_material_error },
-    { label: 'Sales Pitch',     icon: Megaphone, status: status?.sales_pitch_status,    error: status?.sales_pitch_error },
+    { label: 'Client Profile',        icon: User,      status: status?.profile_status,       error: status?.profile_error },
+    { label: 'Study Material',        icon: BookOpen,  status: status?.study_material_status, error: status?.study_material_error },
+    { label: 'Sales Pitch',           icon: Megaphone, status: status?.sales_pitch_status,    error: status?.sales_pitch_error },
+    { label: 'Technical Terminology', icon: Library,   status: status?.terminology_status,    error: status?.terminology_error },
   ]
 
   const overall = status?.overall_status

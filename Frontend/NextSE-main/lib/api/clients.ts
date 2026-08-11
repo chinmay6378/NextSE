@@ -7,9 +7,13 @@ import type {
   GenerationStatus,
 } from './types'
 
-export function listClients(params?: { status?: string; industry?: string }) {
+export function listClients(params?: { status?: string; industry?: string; includeArchived?: boolean }) {
   return apiFetch<Client[]>('/clients', {
-    searchParams: { status_filter: params?.status, industry: params?.industry },
+    searchParams: {
+      status_filter: params?.status,
+      industry: params?.industry,
+      include_archived: params?.includeArchived ? 'true' : undefined,
+    },
   })
 }
 
@@ -63,10 +67,29 @@ export function patchProfile(
   return apiFetch(`/clients/${clientId}/profile`, { method: 'PATCH', body: payload })
 }
 
+export function patchTerminology(
+  clientId: string,
+  payload: { content_markdown?: string; content_json?: Record<string, unknown> }
+) {
+  return apiFetch(`/clients/${clientId}/technical-terminology`, { method: 'PATCH', body: payload })
+}
+
 export function regenerate(clientId: string, payload: { section?: string; custom_prompt?: string }) {
   return apiFetch<GenerationKickoff>(`/clients/${clientId}/regenerate`, { method: 'POST', body: payload })
 }
 
 export function publishClient(clientId: string) {
   return apiFetch<Client>(`/clients/${clientId}/publish`, { method: 'POST' })
+}
+
+export function archiveClient(clientId: string) {
+  return apiFetch<Client>(`/clients/${clientId}/archive`, { method: 'POST' })
+}
+
+export function unarchiveClient(clientId: string) {
+  return apiFetch<Client>(`/clients/${clientId}/unarchive`, { method: 'POST' })
+}
+
+export function deleteClient(clientId: string) {
+  return apiFetch<void>(`/clients/${clientId}`, { method: 'DELETE' })
 }

@@ -1,5 +1,6 @@
 import uuid
 
+from sqlalchemy import Boolean
 from sqlalchemy import Enum as SAEnum
 from sqlalchemy import ForeignKey, String
 from sqlalchemy.dialects.postgresql import UUID
@@ -22,4 +23,5 @@ class Profile(Base):
     email: Mapped[str] = mapped_column(String, nullable=False)
     full_name: Mapped[str] = mapped_column(String, nullable=False)
     role: Mapped[str] = mapped_column(ProfileRole, nullable=False, server_default="engineer")
+    archived: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="false")
     created_at = created_at_col()

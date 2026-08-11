@@ -9,6 +9,10 @@ export function getSalesPitch(clientId: string) {
   return apiFetch<GeneratedContent>(`/clients/${clientId}/sales-pitch`)
 }
 
+export function getTechnicalTerminology(clientId: string) {
+  return apiFetch<GeneratedContent>(`/clients/${clientId}/technical-terminology`)
+}
+
 export function getEngineerProgress(clientId: string) {
   return apiFetch<EngineerProgress>(`/engineer-progress/${clientId}`)
 }

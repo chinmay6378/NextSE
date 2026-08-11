@@ -1,9 +1,10 @@
 """Admin & engineer results endpoints."""
 
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
+from typing import Literal
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -25,7 +26,15 @@ class ResultOut(BaseModel):
     communication_score: float | None
     overall_score: float | None
     status: str
+    reviewed_by: uuid.UUID | None
+    reviewer_notes: str | None
+    reviewed_at: datetime | None
     created_at: datetime
+
+
+class ResultReviewRequest(BaseModel):
+    status: Literal["pass", "retrain", "reject"]
+    reviewer_notes: str | None = None
 
 
 async def _enrich_results(db: AsyncSession, rows: list[Result]) -> list[ResultOut]:
@@ -53,6 +62,9 @@ async def _enrich_results(db: AsyncSession, rows: list[Result]) -> list[ResultOu
             communication_score=float(r.communication_score) if r.communication_score is not None else None,
             overall_score=float(r.overall_score) if r.overall_score is not None else None,
             status=r.status,
+            reviewed_by=r.reviewed_by,
+            reviewer_notes=r.reviewer_notes,
+            reviewed_at=r.reviewed_at,
             created_at=r.created_at,
         )
         for r in rows
@@ -88,3 +100,28 @@ async def list_my_results(db: DbSession, profile: CurrentProfile) -> list[Result
         )
     ).scalars().all()
     return await _enrich_results(db, list(rows))
+
+
+@router.patch(
+    "/admin/results/{result_id}/review",
+    response_model=ResultOut,
+    dependencies=[Depends(require_role("admin", "manager"))],
+)
+async def review_result(
+    result_id: uuid.UUID,
+    payload: ResultReviewRequest,
+    db: DbSession,
+    profile: CurrentProfile,
+) -> ResultOut:
+    result = await db.get(Result, result_id)
+    if result is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Result not found")
+
+    result.status = payload.status
+    result.reviewer_notes = payload.reviewer_notes
+    result.reviewed_by = profile.id
+    result.reviewed_at = datetime.now(timezone.utc)
+
+    await db.commit()
+    await db.refresh(result)
+    return (await _enrich_results(db, [result]))[0]

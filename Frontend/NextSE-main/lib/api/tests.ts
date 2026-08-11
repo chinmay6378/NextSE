@@ -52,6 +52,23 @@ export function deleteTestRequest(requestId: string) {
   return apiFetch<void>(`/admin/test-requests/${requestId}`, { method: 'DELETE' })
 }
 
-export function listEngineers() {
-  return apiFetch<Profile[]>('/admin/users', { searchParams: { role: 'engineer' } })
+export function listEngineers(params?: { includeArchived?: boolean }) {
+  return apiFetch<Profile[]>('/admin/users', {
+    searchParams: {
+      role: 'engineer',
+      include_archived: params?.includeArchived ? 'true' : undefined,
+    },
+  })
+}
+
+export function archiveEngineer(profileId: string) {
+  return apiFetch<Profile>(`/admin/users/${profileId}/archive`, { method: 'POST' })
+}
+
+export function unarchiveEngineer(profileId: string) {
+  return apiFetch<Profile>(`/admin/users/${profileId}/unarchive`, { method: 'POST' })
+}
+
+export function deleteEngineer(profileId: string) {
+  return apiFetch<void>(`/admin/users/${profileId}`, { method: 'DELETE' })
 }
