@@ -92,7 +92,7 @@ const allNavItems: NavItem[] = [
     label: 'Review',
     description: 'Approve submissions',
     icon: ClipboardCheck,
-    roles: ['manager'],
+    roles: ['manager', 'admin'],
   },
 ]
 
