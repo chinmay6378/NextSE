@@ -1,24 +1,28 @@
 'use client'
 
-import { useRouter } from 'next/navigation'
-import { useEffect } from 'react'
-
 import { useAuth } from '@/lib/auth'
 
 export default function ManagerLayout({ children }: { children: React.ReactNode }) {
   const { profile, loading } = useAuth()
-  const router = useRouter()
 
-  useEffect(() => {
-    if (!loading && profile && profile.role !== 'manager' && profile.role !== 'admin') {
-      router.replace('/dashboard')
-    }
-  }, [loading, profile, router])
-
-  if (loading || !profile || (profile.role !== 'manager' && profile.role !== 'admin')) {
+  // Purely render-based access control - no router.replace()/useEffect. Access
+  // is decided fresh on every render from the current profile state; there is
+  // no navigation side effect that could misfire from a stale closure or a
+  // transient profile state, so this can never bounce someone away from the
+  // page on its own.
+  if (loading || !profile) {
     return (
       <div className="flex items-center justify-center h-full py-24">
         <div className="w-8 h-8 border-3 border-primary/30 border-t-primary rounded-full animate-spin" />
+      </div>
+    )
+  }
+
+  if (profile.role !== 'manager' && profile.role !== 'admin') {
+    return (
+      <div className="flex flex-col items-center justify-center h-full py-24 gap-2 text-center">
+        <p className="text-foreground font-semibold">You don&apos;t have access to this page.</p>
+        <p className="text-muted-foreground text-sm">This area is restricted to managers and admins.</p>
       </div>
     )
   }
