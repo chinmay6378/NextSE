@@ -22,10 +22,30 @@ from app.services.openai_client import GenerationFailedError
 
 router = APIRouter(tags=["tests"])
 
+MAX_LEVEL = 3
+DIFFICULTY_MAP = {1: "easy", 2: "medium", 3: "hard"}
+
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
+async def _current_level(db: AsyncSession, engineer_id: uuid.UUID, client_id: uuid.UUID) -> int:
+    """A candidate's level for a client is the highest level they've *passed*,
+    plus one - so level 2 is unreachable until level 1 has been passed at
+    least once, and a fail on any level keeps them on that same level (it
+    doesn't advance just because an attempt was made). Capped at MAX_LEVEL."""
+    highest_passed = await db.scalar(
+        select(func.max(MCQAttempt.level))
+        .join(TestRequest, MCQAttempt.test_request_id == TestRequest.id)
+        .where(
+            MCQAttempt.engineer_id == engineer_id,
+            TestRequest.client_id == client_id,
+            MCQAttempt.passed.is_(True),
+        )
+    )
+    return min((highest_passed or 0) + 1, MAX_LEVEL)
+
 
 def _req_out(
     req: TestRequest,
@@ -33,6 +53,7 @@ def _req_out(
     engineer_name: str | None = None,
     score_percent: float | None = None,
     passed: bool | None = None,
+    level: int | None = None,
 ) -> TestRequestOut:
     return TestRequestOut(
         id=req.id,
@@ -46,6 +67,7 @@ def _req_out(
         engineer_name=engineer_name,
         score_percent=score_percent,
         passed=passed,
+        level=level,
     )
 
 
@@ -70,17 +92,16 @@ async def _enrich(db: AsyncSession, requests: list[TestRequest]) -> list[TestReq
 
     client_names: dict[uuid.UUID, str] = {c.id: c.name for c in client_rows}
     engineer_names: dict[uuid.UUID, str] = {p.id: p.full_name for p in engineer_rows}
-    attempt_scores: dict[uuid.UUID, tuple[float, bool]] = {
-        a.test_request_id: (float(a.score_percent), bool(a.passed)) for a in attempt_rows
-    }
+    attempts: dict[uuid.UUID, MCQAttempt] = {a.test_request_id: a for a in attempt_rows}
 
     return [
         _req_out(
             r,
             client_name=client_names.get(r.client_id),
             engineer_name=engineer_names.get(r.engineer_id),
-            score_percent=attempt_scores.get(r.id, (None, None))[0],
-            passed=attempt_scores.get(r.id, (None, None))[1],
+            score_percent=float(attempts[r.id].score_percent) if r.id in attempts else None,
+            passed=bool(attempts[r.id].passed) if r.id in attempts else None,
+            level=attempts[r.id].level if r.id in attempts else None,
         )
         for r in requests
     ]
@@ -181,6 +202,73 @@ async def approve_test_request(
     return (await _enrich(db, [req]))[0]
 
 
+@router.post(
+    "/admin/test-requests/{request_id}/retake",
+    response_model=TestRequestOut,
+    status_code=status.HTTP_201_CREATED,
+)
+async def retake_test_request(
+    request_id: uuid.UUID, db: DbSession, profile: AdminProfile
+) -> TestRequestOut:
+    """Re-assigns the same client+engineer test after a completed attempt.
+    Creates a brand-new TestRequest (the old one, its MCQAttempt, and its
+    Result are left untouched, so the full history stays intact) and forces
+    a fresh MCQ set for the client so the candidate doesn't see the same
+    questions again. The level served on the new attempt is still governed
+    by _current_level - a candidate who failed level 1 stays on level 1
+    until they pass it."""
+    prior = await db.get(TestRequest, request_id)
+    if prior is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Test request not found")
+    if prior.status != "completed":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Cannot retake a test with status '{prior.status}' — only a completed test can be retaken",
+        )
+
+    open_existing = (
+        await db.execute(
+            select(TestRequest).where(
+                TestRequest.client_id == prior.client_id,
+                TestRequest.engineer_id == prior.engineer_id,
+                TestRequest.status.in_(("pending", "approved", "in_progress")),
+            )
+        )
+    ).scalars().first()
+    if open_existing is not None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="This candidate already has an open test for this client",
+        )
+
+    client = await db.get(Client, prior.client_id)
+    engineer = await db.get(Profile, prior.engineer_id)
+
+    try:
+        await get_or_generate_mcq_set(db, prior.client_id, force=True)
+    except GenerationFailedError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=f"MCQ generation failed: {exc}",
+        ) from exc
+
+    new_req = TestRequest(
+        client_id=prior.client_id,
+        engineer_id=prior.engineer_id,
+        requested_by=profile.id,
+        status="approved",
+        responded_at=datetime.now(timezone.utc),
+    )
+    db.add(new_req)
+    await db.commit()
+    await db.refresh(new_req)
+    return _req_out(
+        new_req,
+        client_name=client.name if client else None,
+        engineer_name=engineer.full_name if engineer else None,
+    )
+
+
 # ---------------------------------------------------------------------------
 # Engineer endpoints
 # ---------------------------------------------------------------------------
@@ -218,18 +306,8 @@ async def start_test(request_id: uuid.UUID, db: DbSession, profile: EngineerProf
 
     questions = await _load_questions(db, mcq_set.id)
 
-    # Determine level based on how many attempts engineer has already completed for this client
-    attempt_count = await db.scalar(
-        select(func.count(MCQAttempt.id))
-        .join(TestRequest, MCQAttempt.test_request_id == TestRequest.id)
-        .where(
-            MCQAttempt.engineer_id == profile.id,
-            TestRequest.client_id == req.client_id,
-        )
-    )
-    level = min((attempt_count or 0) + 1, 3)
-    difficulty_map = {1: "easy", 2: "medium", 3: "hard"}
-    level_questions = [q for q in questions if q.difficulty == difficulty_map[level]]
+    level = await _current_level(db, profile.id, req.client_id)
+    level_questions = [q for q in questions if q.difficulty == DIFFICULTY_MAP[level]]
 
     if req.status == "approved":
         req.status = "in_progress"
@@ -288,20 +366,11 @@ async def submit_mcq(
     questions = await _load_questions(db, mcq_set.id)
     question_map: dict[uuid.UUID, MCQQuestion] = {q.id: q for q in questions}
 
-    # Determine level (same logic as start_test — count completed attempts before this one)
-    attempt_count = await db.scalar(
-        select(func.count(MCQAttempt.id))
-        .join(TestRequest, MCQAttempt.test_request_id == TestRequest.id)
-        .where(
-            MCQAttempt.engineer_id == profile.id,
-            TestRequest.client_id == req.client_id,
-        )
-    )
-    level = min((attempt_count or 0) + 1, 3)
-    difficulty_map = {1: "easy", 2: "medium", 3: "hard"}
+    # Determine level (same rule as start_test — highest level ever passed, plus one)
+    level = await _current_level(db, profile.id, req.client_id)
     level_question_map = {
         q_id: q for q_id, q in question_map.items()
-        if q.difficulty == difficulty_map[level]
+        if q.difficulty == DIFFICULTY_MAP[level]
     }
 
     answer_map: dict[uuid.UUID, int] = {a.question_id: a.selected_option_index for a in payload.answers}

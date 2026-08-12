@@ -8,6 +8,7 @@ import {
   CheckCircle2,
   ClipboardList,
   Loader2,
+  RotateCcw,
   Trash2,
   TrendingUp,
 } from 'lucide-react'
@@ -16,7 +17,7 @@ import { use, useState } from 'react'
 import { toast } from 'sonner'
 
 import { listAdminResults } from '@/lib/api/results'
-import { listAdminTestRequests, deleteTestRequest } from '@/lib/api/tests'
+import { listAdminTestRequests, deleteTestRequest, retakeTestRequest } from '@/lib/api/tests'
 import { apiFetch } from '@/lib/api/client'
 import type { Profile, ResultOut, TestRequest } from '@/lib/api/types'
 
@@ -101,6 +102,15 @@ export default function EngineerDetailPage({
       setConfirmingId(null)
       toast.error(e.message ?? 'Could not unassign test')
     },
+  })
+
+  const retakeMutation = useMutation({
+    mutationFn: (requestId: string) => retakeTestRequest(requestId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-test-requests', engineerId] })
+      toast.success('Retake assigned — a fresh set of questions is ready for the candidate')
+    },
+    onError: (e: Error) => toast.error(e.message ?? 'Could not assign a retake'),
   })
 
   const { data: engineer, isLoading: engLoading } = useQuery({
@@ -278,6 +288,11 @@ export default function EngineerDetailPage({
                   </p>
                 </div>
                 <div className="flex items-center gap-3">
+                  {req.level != null && (
+                    <span className="text-[11px] font-bold px-2 py-0.5 rounded-full border bg-violet-50 text-violet-700 border-violet-200">
+                      L{req.level}
+                    </span>
+                  )}
                   {req.score_percent != null && (
                     <span className={`text-xs font-bold px-2.5 py-0.5 rounded-full border ${req.passed ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-red-50 text-red-600 border-red-200'}`}>
                       {req.score_percent.toFixed(0)}%
@@ -286,6 +301,17 @@ export default function EngineerDetailPage({
                   <span className={`text-[11px] font-semibold px-2.5 py-0.5 rounded-full border ${STATUS_STYLES[req.status] ?? 'bg-muted text-muted-foreground border-border'}`}>
                     {STATUS_LABELS[req.status] ?? req.status}
                   </span>
+                  {req.status === 'completed' && req.passed === false && (
+                    <button
+                      onClick={() => retakeMutation.mutate(req.id)}
+                      disabled={retakeMutation.isPending}
+                      className="flex items-center gap-1 text-[11px] font-semibold px-2.5 py-0.5 rounded-full border bg-orange-50 text-orange-700 border-orange-200 hover:bg-orange-100 transition-colors disabled:opacity-60"
+                      title="Assign a retake with fresh questions"
+                    >
+                      <RotateCcw size={11} className={retakeMutation.isPending ? 'animate-spin' : ''} />
+                      {retakeMutation.isPending ? 'Assigning…' : 'Retake'}
+                    </button>
+                  )}
                   {(req.status === 'pending' || req.status === 'approved') && (
                     confirmingId === req.id ? (
                       <div className="flex items-center gap-1.5">

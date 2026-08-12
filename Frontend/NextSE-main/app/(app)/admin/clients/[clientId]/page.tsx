@@ -54,6 +54,7 @@ import {
   createTestRequest,
   listAdminTestRequests,
   listEngineers,
+  retakeTestRequest,
 } from '@/lib/api/tests'
 import type { GeneratedContent, GenerationSection, YoutubeVideo } from '@/lib/api/types'
 import { cn } from '@/lib/utils'
@@ -238,6 +239,11 @@ export default function ClientDetailPage({ params }: { params: Promise<{ clientI
     mutationFn: (requestId: string) => approveTestRequest(requestId),
     onSuccess: () => { invalidateTR(); toast.success('Test request approved') },
     onError: (e) => toast.error(e instanceof ApiError ? e.message : 'Could not approve'),
+  })
+  const retakeTRMutation = useMutation({
+    mutationFn: (requestId: string) => retakeTestRequest(requestId),
+    onSuccess: () => { invalidateTR(); toast.success('Retake assigned with fresh questions') },
+    onError: (e) => toast.error(e instanceof ApiError ? e.message : 'Could not assign a retake'),
   })
   const loadCataloguePreview = async (fileId: string) => {
     if (previewFileId === fileId) { setPreviewFileId(null); setPreviewUrl(null); return }
@@ -1046,6 +1052,16 @@ export default function ClientDetailPage({ params }: { params: Promise<{ clientI
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
+                        {req.level != null && (
+                          <span className="text-xs font-bold px-2 py-1 rounded-full bg-violet-50 text-violet-700">
+                            L{req.level}
+                          </span>
+                        )}
+                        {req.score_percent != null && (
+                          <span className={cn('text-xs font-bold px-2.5 py-1 rounded-full', req.passed ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-600')}>
+                            {req.score_percent.toFixed(0)}%
+                          </span>
+                        )}
                         <span className={cn('text-xs font-medium px-2.5 py-1 rounded-full', cfg.bg, cfg.text)}>
                           {cfg.label}
                         </span>
@@ -1058,6 +1074,17 @@ export default function ClientDetailPage({ params }: { params: Promise<{ clientI
                             className="text-xs px-3 py-1.5 rounded-lg bg-primary text-primary-foreground font-semibold hover:bg-primary/90 disabled:opacity-50 transition-colors"
                           >
                             Approve
+                          </motion.button>
+                        )}
+                        {req.status === 'completed' && req.passed === false && (
+                          <motion.button
+                            whileHover={{ scale: 1.03 }}
+                            whileTap={{ scale: 0.97 }}
+                            onClick={() => retakeTRMutation.mutate(req.id)}
+                            disabled={retakeTRMutation.isPending}
+                            className="text-xs px-3 py-1.5 rounded-lg bg-orange-50 text-orange-700 font-semibold hover:bg-orange-100 disabled:opacity-50 transition-colors"
+                          >
+                            {retakeTRMutation.isPending ? 'Assigning…' : 'Retake'}
                           </motion.button>
                         )}
                       </div>

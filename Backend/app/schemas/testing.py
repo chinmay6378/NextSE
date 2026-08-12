@@ -21,6 +21,7 @@ class TestRequestOut(BaseModel):
     engineer_name: str | None = None
     score_percent: float | None = None
     passed: bool | None = None
+    level: int | None = None
 
 
 class MCQQuestionOut(BaseModel):

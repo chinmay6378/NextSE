@@ -131,6 +131,7 @@ export interface TestRequest {
   engineer_name: string | null
   score_percent: number | null
   passed: boolean | null
+  level: number | null
 }
 
 export interface ResultOut {

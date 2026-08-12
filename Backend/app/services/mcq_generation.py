@@ -45,15 +45,20 @@ async def _has_enough_questions(db: AsyncSession, mcq_set_id: uuid.UUID) -> bool
     return True
 
 
-async def get_or_generate_mcq_set(db: AsyncSession, client_id: uuid.UUID) -> MCQSet:
+async def get_or_generate_mcq_set(db: AsyncSession, client_id: uuid.UUID, force: bool = False) -> MCQSet:
     """Return the latest cached MCQ set (if it has enough questions per level),
-    or generate and persist a new 30-question set (10 easy / 10 medium / 10 hard)."""
-    cached = await db.execute(
-        select(MCQSet).where(MCQSet.client_id == client_id).order_by(MCQSet.version.desc()).limit(1)
-    )
-    mcq_set = cached.scalars().first()
-    if mcq_set is not None and await _has_enough_questions(db, mcq_set.id):
-        return mcq_set
+    or generate and persist a new 30-question set (10 easy / 10 medium / 10 hard).
+
+    `force=True` skips the cache and always generates a fresh, newly-versioned
+    set - used when retaking a test so the candidate doesn't see the same
+    questions again."""
+    if not force:
+        cached = await db.execute(
+            select(MCQSet).where(MCQSet.client_id == client_id).order_by(MCQSet.version.desc()).limit(1)
+        )
+        mcq_set = cached.scalars().first()
+        if mcq_set is not None and await _has_enough_questions(db, mcq_set.id):
+            return mcq_set
 
     context = await _build_context(db, client_id)
 

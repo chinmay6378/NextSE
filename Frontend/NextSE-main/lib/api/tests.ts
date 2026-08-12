@@ -52,6 +52,10 @@ export function deleteTestRequest(requestId: string) {
   return apiFetch<void>(`/admin/test-requests/${requestId}`, { method: 'DELETE' })
 }
 
+export function retakeTestRequest(requestId: string) {
+  return apiFetch<TestRequest>(`/admin/test-requests/${requestId}/retake`, { method: 'POST' })
+}
+
 export function listEngineers(params?: { includeArchived?: boolean }) {
   return apiFetch<Profile[]>('/admin/users', {
     searchParams: {
